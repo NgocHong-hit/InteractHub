@@ -1,0 +1,8 @@
+USE master;
+GO
+IF EXISTS (SELECT name FROM sys.databases WHERE name = 'InteractHubDB')
+BEGIN
+    ALTER DATABASE InteractHubDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE InteractHubDB;
+END
+GO
