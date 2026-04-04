@@ -4,6 +4,7 @@ using InteractHub.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InteractHub.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260402163119_AddFullNameToUsers")]
+    partial class AddFullNameToUsers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -49,7 +52,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Comments", (string)null);
+                    b.ToTable("Comments");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.Friendship", b =>
@@ -79,7 +82,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasIndex("UserId2");
 
-                    b.ToTable("Friendships", (string)null);
+                    b.ToTable("Friendships");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.Hashtag", b =>
@@ -96,7 +99,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Hashtags", (string)null);
+                    b.ToTable("Hashtags");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.Like", b =>
@@ -119,7 +122,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Likes", (string)null);
+                    b.ToTable("Likes");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.Notification", b =>
@@ -147,7 +150,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.Post", b =>
@@ -175,7 +178,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Posts", (string)null);
+                    b.ToTable("Posts");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.PostHashtag", b =>
@@ -190,7 +193,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasIndex("HashtagId");
 
-                    b.ToTable("PostHashtags", (string)null);
+                    b.ToTable("PostHashtags");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.Report", b =>
@@ -224,7 +227,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasIndex("ReporterId");
 
-                    b.ToTable("Reports", (string)null);
+                    b.ToTable("Reports");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.Story", b =>
@@ -251,7 +254,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Stories", (string)null);
+                    b.ToTable("Stories");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.User", b =>
