@@ -9,5 +9,6 @@ namespace InteractHub.API.Models
     public virtual Post Post { get; set; } = null!;
     public int UserId { get; set; }
     public virtual User User { get; set; } = null!;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

@@ -8,6 +8,7 @@ using InteractHub.API.Data;
 using InteractHub.API.Models;
 using InteractHub.API.Interfaces;
 using InteractHub.API.Services;
+using InteractHub.API.Repositories;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json; // Thêm dòng này
 
@@ -91,6 +92,12 @@ builder.Services.AddCors(options => {
 });
 
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IPostRepository, PostRepository>();
+builder.Services.AddScoped<ICommentRepository, CommentRepository>();
+builder.Services.AddScoped<ILikeRepository, LikeRepository>();
+builder.Services.AddScoped<PostService>();
+builder.Services.AddScoped<CommentService>();
+builder.Services.AddScoped<LikeService>();
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
