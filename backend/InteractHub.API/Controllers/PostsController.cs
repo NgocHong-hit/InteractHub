@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using InteractHub.API.Helpers;
 using InteractHub.API.Models;
 using InteractHub.API.Services;
 using System.IO;
@@ -50,8 +51,8 @@ public class PostsController : ControllerBase
         if (string.IsNullOrWhiteSpace(createPostDto.Content))
             return BadRequest(new { message = "Content is required" });
 
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!int.TryParse(userIdClaim, out var userId))
+        var userId = ClaimsHelper.GetUserId(User);
+        if (userId == null)
             return Unauthorized(new { message = "Invalid or missing user ID" });
 
         string? imageUrl = null;
@@ -80,7 +81,7 @@ public class PostsController : ControllerBase
         {
             Content = createPostDto.Content,
             ImageUrl = imageUrl,
-            UserId = userId
+            UserId = userId.Value
         };
 
         try
@@ -98,13 +99,15 @@ public class PostsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdatePost(int id, [FromBody] UpdatePostDto updatePostDto)
     {
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var userId = ClaimsHelper.GetUserId(User);
+        if (userId == null)
+            return Unauthorized(new { message = "Invalid or missing user ID" });
 
         var existingPost = await _postService.GetPostByIdAsync(id);
         if (existingPost == null)
             return NotFound();
 
-        if (existingPost.UserId != userId)
+        if (existingPost.UserId != userId.Value)
             return Forbid();
 
         existingPost.Content = updatePostDto.Content ?? existingPost.Content;
@@ -117,13 +120,15 @@ public class PostsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeletePost(int id)
     {
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var userId = ClaimsHelper.GetUserId(User);
+        if (userId == null)
+            return Unauthorized(new { message = "Invalid or missing user ID" });
 
         var existingPost = await _postService.GetPostByIdAsync(id);
         if (existingPost == null)
             return NotFound();
 
-        if (existingPost.UserId != userId)
+        if (existingPost.UserId != userId.Value)
             return Forbid();
 
         var result = await _postService.DeletePostAsync(id);

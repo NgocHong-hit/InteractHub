@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using InteractHub.API.Helpers;
 using InteractHub.API.Models;
 using InteractHub.API.Services;
 using System.Security.Claims;
@@ -38,13 +39,18 @@ public class CommentsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateComment([FromBody] CreateCommentDto createCommentDto)
     {
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var userId = ClaimsHelper.GetUserId(User);
+        if (userId == null)
+            return Unauthorized(new { message = "Invalid or missing user ID" });
+
+        if (string.IsNullOrWhiteSpace(createCommentDto.Content))
+            return BadRequest(new { message = "Content is required" });
 
         var comment = new Comment
         {
             Content = createCommentDto.Content,
             PostId = createCommentDto.PostId,
-            UserId = userId
+            UserId = userId.Value
         };
 
         var createdComment = await _commentService.CreateCommentAsync(comment);
@@ -55,13 +61,15 @@ public class CommentsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateComment(int id, [FromBody] UpdateCommentDto updateCommentDto)
     {
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var userId = ClaimsHelper.GetUserId(User);
+        if (userId == null)
+            return Unauthorized(new { message = "Invalid or missing user ID" });
 
         var existingComment = await _commentService.GetCommentByIdAsync(id);
         if (existingComment == null)
             return NotFound();
 
-        if (existingComment.UserId != userId)
+        if (existingComment.UserId != userId.Value)
             return Forbid();
 
         existingComment.Content = updateCommentDto.Content ?? existingComment.Content;
@@ -73,13 +81,15 @@ public class CommentsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteComment(int id)
     {
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var userId = ClaimsHelper.GetUserId(User);
+        if (userId == null)
+            return Unauthorized(new { message = "Invalid or missing user ID" });
 
         var existingComment = await _commentService.GetCommentByIdAsync(id);
         if (existingComment == null)
             return NotFound();
 
-        if (existingComment.UserId != userId)
+        if (existingComment.UserId != userId.Value)
             return Forbid();
 
         var result = await _commentService.DeleteCommentAsync(id);

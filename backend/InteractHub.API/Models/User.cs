@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace InteractHub.API.Models
 {
@@ -14,7 +15,9 @@ namespace InteractHub.API.Models
         public string? Gender { get; set; }        // Lưu "Male", "Female" hoặc "Other"
    
         // THÊM CÁC DÒNG DƯỚI ĐÂY ĐỂ HẾT LỖI CS1061
+        [JsonIgnore]
         public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
+        [JsonIgnore]
         public virtual ICollection<Like> Likes { get; set; } = new List<Like>();
         
         // Quan hệ bạn bè thường chia làm 2 phía: người gửi và người nhận

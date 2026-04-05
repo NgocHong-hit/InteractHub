@@ -10,7 +10,8 @@ using InteractHub.API.Interfaces;
 using InteractHub.API.Services;
 using InteractHub.API.Repositories;
 using System.IdentityModel.Tokens.Jwt;
-using System.Text.Json; // Thêm dòng này
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 // --- QUAN TRỌNG: Ngăn ASP.NET Core tự đổi tên Claim (ví dụ: sub thành NameIdentifier) ---
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -101,8 +102,9 @@ builder.Services.AddScoped<LikeService>();
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // Giữ nguyên tên biến như trong C# hoặc ép về camelCase (chữ đầu thường)
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
     });
 builder.Services.AddEndpointsApiExplorer();
 

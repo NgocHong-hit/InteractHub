@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Serialization;
 
 namespace InteractHub.API.Models
 {
@@ -9,6 +10,7 @@ namespace InteractHub.API.Models
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public int PostId { get; set; }
+    [JsonIgnore]
     public virtual Post Post { get; set; } = null!;
     public int UserId { get; set; }
     public virtual User User { get; set; } = null!;

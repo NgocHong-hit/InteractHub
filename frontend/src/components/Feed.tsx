@@ -12,6 +12,15 @@ const Feed = ({ stories = [], userData }: any) => {
   const [showComments, setShowComments] = useState<Record<number, boolean>>({});
   const [commentText, setCommentText] = useState<Record<number, string>>({});
 
+  const parseResponseData = async (response: Response) => {
+    const responseText = await response.text();
+    try {
+      return responseText ? JSON.parse(responseText) : null;
+    } catch {
+      return { message: responseText || response.statusText };
+    }
+  };
+
   useEffect(() => {
     fetchPosts();
   }, []);
@@ -58,7 +67,7 @@ const Feed = ({ stories = [], userData }: any) => {
         body: JSON.stringify({ postId })
       });
 
-      const responseData = await response.json();
+      const responseData = await parseResponseData(response);
       console.log('Like response:', responseData);
 
       if (response.ok) {
@@ -105,7 +114,7 @@ const Feed = ({ stories = [], userData }: any) => {
         body: JSON.stringify({ postId, content })
       });
 
-      const responseData = await response.json();
+      const responseData = await parseResponseData(response);
       console.log('Comment response:', responseData);
 
       if (response.ok) {

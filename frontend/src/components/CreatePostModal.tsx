@@ -55,13 +55,13 @@ const CreatePostModal = ({ isOpen, onClose, userData, onPostSuccess }: any) => {
       });
 
       const responseText = await response.text();
-      let newPost;
+      let newPost: any;
 
       try {
-        newPost = JSON.parse(responseText);
+        newPost = responseText ? JSON.parse(responseText) : null;
       } catch (e) {
-        console.error('Response:', responseText);
-        throw new Error('Invalid response from server');
+        console.error('Response is not valid JSON:', responseText);
+        newPost = { message: responseText };
       }
 
       if (!response.ok) {

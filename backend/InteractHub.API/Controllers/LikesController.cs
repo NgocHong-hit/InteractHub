@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using InteractHub.API.Helpers;
 using InteractHub.API.Models;
 using InteractHub.API.Services;
 using System.Security.Claims;
@@ -28,13 +29,13 @@ public class LikesController : ControllerBase
     [HttpPost("toggle")]
     public async Task<IActionResult> ToggleLike([FromBody] ToggleLikeDto toggleLikeDto)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!int.TryParse(userIdClaim, out var userId))
+        var userId = ClaimsHelper.GetUserId(User);
+        if (userId == null)
             return Unauthorized(new { message = "Invalid or missing user ID" });
 
         try
         {
-            var result = await _likeService.ToggleLikeAsync(toggleLikeDto.PostId, userId);
+            var result = await _likeService.ToggleLikeAsync(toggleLikeDto.PostId, userId.Value);
             return Ok(new { message = "Like toggled successfully", success = true });
         }
         catch (Exception ex)
@@ -46,7 +47,9 @@ public class LikesController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteLike(int id)
     {
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var userId = ClaimsHelper.GetUserId(User);
+        if (userId == null)
+            return Unauthorized(new { message = "Invalid or missing user ID" });
 
         var existingLike = await _likeService.GetLikeByIdAsync(id);
         if (existingLike == null)
