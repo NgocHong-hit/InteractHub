@@ -1,77 +1,144 @@
-import React from 'react';
+﻿import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { X, Image as ImageIcon, Smile, User, Globe } from 'lucide-react';
+import { X, Image as ImageIcon, Globe } from 'lucide-react';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
 
 const CreatePostModal = ({ isOpen, onClose, userData, onPostSuccess }: any) => {
-  // 1. Khởi tạo React Hook Form
-  const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm();
 
   if (!isOpen) return null;
 
-  // 2. Hàm xử lý khi nhấn nút "Đăng"
-  const onSubmit = (data: any) => {
-    console.log("Nội dung bài viết mới:", data);
-    // Giả lập gửi dữ liệu thành công
-    onPostSuccess(data.content); 
-    reset(); // Xóa trắng form sau khi đăng
-    onClose(); // Đóng modal
+  const displayName = userData?.fullName || userData?.name || 'Bạn';
+
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setSelectedImage(file);
+    const reader = new FileReader();
+    reader.onload = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+  };
+
+  const onSubmit = async (data: any) => {
+    if (!data.content?.trim()) {
+      alert('Vui lòng nhập nội dung bài viết');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('Content', data.content.trim());
+    if (selectedImage) {
+      formData.append('Image', selectedImage);
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Bạn chưa đăng nhập');
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/posts`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const responseText = await response.text();
+      let newPost;
+
+      try {
+        newPost = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Response:', responseText);
+        throw new Error('Invalid response from server');
+      }
+
+      if (!response.ok) {
+        console.error('Failed to create post', newPost?.message || responseText);
+        alert(`Lỗi: ${newPost?.message || 'Không thể tạo bài viết'}`);
+        return;
+      }
+
+      console.log('Post created successfully:', newPost);
+      onPostSuccess(newPost);
+      reset();
+      removeImage();
+      onClose();
+    } catch (error) {
+      console.error('Error creating post:', error);
+      alert(`Lỗi: ${error instanceof Error ? error.message : 'Không thể tạo bài viết'}`);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-      {/* Lớp nền mờ */}
-      <div className="absolute inset-0 bg-white/80 backdrop-blur-sm" onClick={onClose}></div>
-
-      {/* Khung Modal chính */}
-      <div className="relative bg-white w-full max-w-[500px] rounded-xl shadow-2xl border border-gray-200 overflow-hidden animate-in zoom-in duration-200">
-        
-        {/* Header */}
-        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-          <div className="w-8"></div>
-          <h3 className="text-xl font-bold text-gray-900">Tạo bài viết</h3>
-          <button onClick={onClose} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-600 transition-colors">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose}></div>
+      <div className="relative bg-white w-full max-w-[520px] rounded-3xl shadow-2xl border border-gray-200 overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div />
+          <h3 className="text-lg font-semibold">Tạo bài viết</h3>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100">
             <X size={20} />
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit(onSubmit)} className="p-4">
-          {/* Thông tin người đăng */}
-          <div className="flex gap-3 mb-4">
-            <img src={userData.avatar} className="w-10 h-10 rounded-full" alt="avatar" />
+        <form onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-4">
+          <div className="flex gap-3 items-center">
+            <img src={userData?.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'} alt="avatar" className="w-12 h-12 rounded-full object-cover" />
             <div>
-              <p className="font-bold text-[15px]">{userData.name}</p>
-              <div className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-md w-fit mt-0.5">
-                <Globe size={12} className="text-gray-600" />
-                <span className="text-[12px] font-bold text-gray-600">Công khai</span>
+              <div className="text-sm font-semibold text-slate-900">{displayName}</div>
+              <div className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
+                <Globe size={12} /> Công khai
               </div>
             </div>
           </div>
 
-          {/* Ô nhập nội dung (Sử dụng register của React Hook Form) */}
-          <textarea 
-            {...register("content", { required: "Bạn chưa nhập gì cả!" })}
-            placeholder={`${userData.name} ơi, bạn đang nghĩ gì thế?`}
-            className="w-full min-h-[150px] text-xl outline-none resize-none placeholder:text-gray-500"
-            autoFocus
-          ></textarea>
-          {errors.content && <p className="text-red-500 text-xs mb-2">*{errors.content.message as string}</p>}
+          <textarea
+            {...register('content', { required: 'Bạn chưa nhập gì cả!' })}
+            placeholder={`${displayName} ơi, bạn đang nghĩ gì thế?`}
+            className="w-full min-h-[140px] rounded-3xl border border-slate-200 px-4 py-3 text-sm outline-none resize-none focus:border-blue-500"
+          />
+          {errors.content && <p className="text-sm text-red-500">{errors.content.message as string}</p>}
 
-          {/* Thanh công cụ bổ sung */}
-          <div className="border border-gray-200 rounded-lg p-3 flex justify-between items-center mb-4">
-            <span className="text-[15px] font-bold text-gray-700">Thêm vào bài viết</span>
-            <div className="flex gap-2">
-              <button type="button" className="p-2 hover:bg-gray-100 rounded-full text-[#45BD62]"><ImageIcon size={24} /></button>
-              <button type="button" className="p-2 hover:bg-gray-100 rounded-full text-[#EAB308]"><Smile size={24} /></button>
+          {imagePreview && (
+            <div className="relative">
+              <img src={imagePreview} alt="preview" className="w-full max-h-[360px] rounded-3xl object-cover" />
+              <button
+                type="button"
+                onClick={removeImage}
+                className="absolute top-3 right-3 rounded-full bg-black/70 p-1 text-white hover:bg-black"
+              >
+                <X size={18} />
+              </button>
             </div>
+          )}
+
+          <div className="flex items-center justify-between rounded-3xl border border-slate-200 px-4 py-3">
+            <span className="text-sm font-semibold text-slate-700">Thêm vào bài viết</span>
+            <label className="flex cursor-pointer items-center gap-2 text-green-600 hover:text-green-700">
+              <ImageIcon size={22} />
+              <span className="text-sm">Ảnh</span>
+              <input type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
+            </label>
           </div>
 
-          {/* Nút Đăng */}
-          <button 
+          <button
             type="submit"
-            className="w-full bg-[#0866FF] hover:bg-[#1877F2] text-white font-bold py-2 rounded-lg transition-all active:scale-[0.98]"
+            disabled={isSubmitting}
+            className="w-full rounded-3xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:bg-slate-400"
           >
-            Đăng
+            {isSubmitting ? 'Đang đăng...' : 'Đăng'}
           </button>
         </form>
       </div>

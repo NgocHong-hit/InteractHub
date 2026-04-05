@@ -48,7 +48,8 @@ public class CommentsController : ControllerBase
         };
 
         var createdComment = await _commentService.CreateCommentAsync(comment);
-        return CreatedAtAction(nameof(GetCommentById), new { id = createdComment.Id }, createdComment);
+        var createdCommentWithUser = await _commentService.GetCommentByIdAsync(createdComment.Id);
+        return CreatedAtAction(nameof(GetCommentById), new { id = createdComment.Id }, createdCommentWithUser);
     }
 
     [HttpPut("{id}")]

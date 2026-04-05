@@ -28,16 +28,18 @@ public class LikesController : ControllerBase
     [HttpPost("toggle")]
     public async Task<IActionResult> ToggleLike([FromBody] ToggleLikeDto toggleLikeDto)
     {
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdClaim, out var userId))
+            return Unauthorized(new { message = "Invalid or missing user ID" });
 
-        var result = await _likeService.ToggleLikeAsync(toggleLikeDto.PostId, userId);
-        if (result)
+        try
         {
-            return Ok(new { message = "Like toggled successfully" });
+            var result = await _likeService.ToggleLikeAsync(toggleLikeDto.PostId, userId);
+            return Ok(new { message = "Like toggled successfully", success = true });
         }
-        else
+        catch (Exception ex)
         {
-            return BadRequest(new { message = "Failed to toggle like" });
+            return BadRequest(new { message = $"Failed to toggle like: {ex.Message}", success = false });
         }
     }
 

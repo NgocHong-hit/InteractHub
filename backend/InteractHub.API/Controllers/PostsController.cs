@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using InteractHub.API.Models;
 using InteractHub.API.Services;
+using System.IO;
 using System.Security.Claims;
 
 namespace InteractHub.API.Controllers;
@@ -43,19 +45,54 @@ public class PostsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreatePost([FromBody] CreatePostDto createPostDto)
+    public async Task<IActionResult> CreatePost([FromForm] CreatePostDto createPostDto)
     {
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        if (string.IsNullOrWhiteSpace(createPostDto.Content))
+            return BadRequest(new { message = "Content is required" });
+
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdClaim, out var userId))
+            return Unauthorized(new { message = "Invalid or missing user ID" });
+
+        string? imageUrl = null;
+        if (createPostDto.Image != null && createPostDto.Image.Length > 0)
+        {
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            var fileName = Guid.NewGuid().ToString() + Path.GetExtension(createPostDto.Image.FileName);
+            var filePath = Path.Combine(uploadsFolder, fileName);
+
+            try
+            {
+                await using var stream = new FileStream(filePath, FileMode.Create);
+                await createPostDto.Image.CopyToAsync(stream);
+                imageUrl = $"/uploads/{fileName}";
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = $"Failed to upload image: {ex.Message}" });
+            }
+        }
 
         var post = new Post
         {
             Content = createPostDto.Content,
-            ImageUrl = createPostDto.ImageUrl,
+            ImageUrl = imageUrl,
             UserId = userId
         };
 
-        var createdPost = await _postService.CreatePostAsync(post);
-        return CreatedAtAction(nameof(GetPostById), new { id = createdPost.Id }, createdPost);
+        try
+        {
+            var createdPost = await _postService.CreatePostAsync(post);
+            var createdPostWithRelations = await _postService.GetPostByIdAsync(createdPost.Id);
+            return CreatedAtAction(nameof(GetPostById), new { id = createdPost.Id }, createdPostWithRelations ?? createdPost);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Failed to create post: {ex.Message}" });
+        }
     }
 
     [HttpPut("{id}")]
@@ -100,7 +137,7 @@ public class PostsController : ControllerBase
 public class CreatePostDto
 {
     public string Content { get; set; } = string.Empty;
-    public string? ImageUrl { get; set; }
+    public IFormFile? Image { get; set; }
 }
 
 public class UpdatePostDto

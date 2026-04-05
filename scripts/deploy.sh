@@ -8,5 +8,5 @@ dotnet publish -c Release -o ./publish
 
 # Ví dụ deploy frontend
 cd ../../frontend
-npm run build
+npm run ldbui
 # Upload folder build/ lên Azure Storage hoặc App Service
