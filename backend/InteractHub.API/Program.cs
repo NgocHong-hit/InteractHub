@@ -99,6 +99,7 @@ builder.Services.AddScoped<ILikeRepository, LikeRepository>();
 builder.Services.AddScoped<PostService>();
 builder.Services.AddScoped<CommentService>();
 builder.Services.AddScoped<LikeService>();
+builder.Services.AddScoped<AdminService>();
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
