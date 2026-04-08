@@ -91,7 +91,8 @@ builder.Services.AddCors(options => {
               .AllowCredentials();
     });
 });
-
+// Thêm dòng này vào file Program.cs (thường ở mục builder.Services)
+builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();

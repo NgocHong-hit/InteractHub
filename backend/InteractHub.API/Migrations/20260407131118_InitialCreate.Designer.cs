@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InteractHub.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260402163119_AddFullNameToUsers")]
-    partial class AddFullNameToUsers
+    [Migration("20260407131118_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -109,6 +109,9 @@ namespace InteractHub.API.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("PostId")
                         .HasColumnType("int");
@@ -268,6 +271,9 @@ namespace InteractHub.API.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
 
+                    b.Property<string>("Address")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("AvatarUrl")
                         .HasColumnType("nvarchar(max)");
 
@@ -281,6 +287,9 @@ namespace InteractHub.API.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("DateOfBirth")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
@@ -289,6 +298,9 @@ namespace InteractHub.API.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("FullName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Gender")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("LockoutEnabled")
@@ -541,7 +553,7 @@ namespace InteractHub.API.Migrations
             modelBuilder.Entity("InteractHub.API.Models.Post", b =>
                 {
                     b.HasOne("InteractHub.API.Models.User", "User")
-                        .WithMany()
+                        .WithMany("Posts")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -670,6 +682,8 @@ namespace InteractHub.API.Migrations
                     b.Navigation("Friendships2");
 
                     b.Navigation("Likes");
+
+                    b.Navigation("Posts");
                 });
 #pragma warning restore 612, 618
         }

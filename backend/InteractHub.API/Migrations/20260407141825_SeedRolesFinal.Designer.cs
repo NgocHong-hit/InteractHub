@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InteractHub.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260331043301_InitialCreateFinal")]
-    partial class InitialCreateFinal
+    [Migration("20260407141825_SeedRolesFinal")]
+    partial class SeedRolesFinal
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -109,6 +109,9 @@ namespace InteractHub.API.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("PostId")
                         .HasColumnType("int");
@@ -268,6 +271,9 @@ namespace InteractHub.API.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
 
+                    b.Property<string>("Address")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("AvatarUrl")
                         .HasColumnType("nvarchar(max)");
 
@@ -281,12 +287,21 @@ namespace InteractHub.API.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("DateOfBirth")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
+
+                    b.Property<string>("FullName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Gender")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
@@ -362,6 +377,20 @@ namespace InteractHub.API.Migrations
                         .HasFilter("[NormalizedName] IS NOT NULL");
 
                     b.ToTable("AspNetRoles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Name = "Admin",
+                            NormalizedName = "ADMIN"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "User",
+                            NormalizedName = "USER"
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
@@ -527,7 +556,7 @@ namespace InteractHub.API.Migrations
             modelBuilder.Entity("InteractHub.API.Models.Notification", b =>
                 {
                     b.HasOne("InteractHub.API.Models.User", "User")
-                        .WithMany("Notifications")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -585,7 +614,7 @@ namespace InteractHub.API.Migrations
             modelBuilder.Entity("InteractHub.API.Models.Story", b =>
                 {
                     b.HasOne("InteractHub.API.Models.User", "User")
-                        .WithMany("Stories")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -668,11 +697,7 @@ namespace InteractHub.API.Migrations
 
                     b.Navigation("Likes");
 
-                    b.Navigation("Notifications");
-
                     b.Navigation("Posts");
-
-                    b.Navigation("Stories");
                 });
 #pragma warning restore 612, 618
         }
