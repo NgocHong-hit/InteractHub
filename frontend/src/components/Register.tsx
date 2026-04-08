@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { 
-  UserPlus, Mail, Lock, User, Phone, ArrowLeft, 
+  UserPlus, Mail, Lock, User, Phone, 
   Loader2, MapPin, Calendar, Users 
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';

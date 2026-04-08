@@ -1,6 +1,6 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { LogIn, Mail, Lock, ArrowLeft, ArrowRight } from 'lucide-react';
+import { LogIn, Mail, Lock, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 
@@ -8,27 +8,33 @@ const App: React.FC = () => {
   const { register, handleSubmit, formState: { errors } } = useForm();
   const navigate = useNavigate(); // 2. Khởi tạo hook điều hướng
 
- const onSubmit = async (data: any) => {
+const onSubmit = async (data: any) => {
   try {
     const response = await axiosClient.post('/account/login', {
       userName: data.email,
       password: data.password
     });
 
-    // 1. Phải lưu Token vào đúng tên mà ProtectedRoute đang tìm (ở đây là 'token')
-    if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
-      
-      // (Tùy chọn) Lưu thêm thông tin user nếu cần
-      localStorage.setItem('user', JSON.stringify(response.data));
+    // DÒNG NÀY ĐỂ KIỂM TRA:
+    console.log("Dữ liệu nhận từ Server:", response.data);
 
-      alert("Đăng nhập thành công!");
+    const userData = response.data;
 
-      // 2. Lệnh chuyển trang
-      navigate('/homepages'); 
+    if (userData.token) {
+      localStorage.setItem('token', userData.token);
+      localStorage.setItem('user', JSON.stringify(userData));
+
+      // KIỂM TRA CHỮ 'Admin' (Phải viết hoa chữ A giống trong DB)
+      if (userData.role === 'Admin') {
+        alert("Đăng nhập quyền ADMIN thành công!");
+        navigate('/admin'); 
+      } else {
+        alert("Đăng nhập thành công!");
+        navigate('/homepages');
+      }
     }
   } catch (error: any) {
-    alert(error.response?.data || "Sai tài khoản hoặc mật khẩu");
+    console.error("Lỗi đăng nhập:", error.response?.data);
   }
 };
   
