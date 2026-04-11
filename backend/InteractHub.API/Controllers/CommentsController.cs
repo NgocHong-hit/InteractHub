@@ -19,6 +19,7 @@ public class CommentsController : ControllerBase
         _commentService = commentService;
     }
 
+    [AllowAnonymous]
     [HttpGet("post/{postId}")]
     public async Task<IActionResult> GetCommentsByPostId(int postId)
     {
@@ -26,6 +27,7 @@ public class CommentsController : ControllerBase
         return Ok(comments);
     }
 
+    [AllowAnonymous]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetCommentById(int id)
     {

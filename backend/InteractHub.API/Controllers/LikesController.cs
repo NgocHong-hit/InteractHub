@@ -19,6 +19,7 @@ public class LikesController : ControllerBase
         _likeService = likeService;
     }
 
+    [AllowAnonymous]
     [HttpGet("post/{postId}")]
     public async Task<IActionResult> GetLikesByPostId(int postId)
     {
