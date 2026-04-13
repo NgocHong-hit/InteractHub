@@ -21,6 +21,7 @@ public class PostsController : ControllerBase
         _postService = postService;
     }
 
+    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetAllPosts()
     {
@@ -28,6 +29,7 @@ public class PostsController : ControllerBase
         return Ok(posts);
     }
 
+    [AllowAnonymous]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetPostById(int id)
     {
@@ -38,6 +40,7 @@ public class PostsController : ControllerBase
         return Ok(post);
     }
 
+    [AllowAnonymous]
     [HttpGet("user/{userId}")]
     public async Task<IActionResult> GetPostsByUserId(int userId)
     {
@@ -46,6 +49,7 @@ public class PostsController : ControllerBase
     }
 
     [HttpPost]
+    [Consumes("multipart/form-data")]
     public async Task<IActionResult> CreatePost([FromForm] CreatePostDto createPostDto)
     {
         if (string.IsNullOrWhiteSpace(createPostDto.Content))

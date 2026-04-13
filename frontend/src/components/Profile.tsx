@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from './Navbar';
+import CreatePostModal from './CreatePostModal';
 import { 
   Home, 
   Users, 
@@ -36,9 +37,10 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('Tất cả');
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Dữ liệu bài viết mẫu
-  const [posts] = useState<Post[]>([
+  const [posts, setPosts] = useState<Post[]>([
     {
       id: 1,
       author: 'Ngọc Hồng',
@@ -68,6 +70,23 @@ const App: React.FC = () => {
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  const handleNewPost = (data: any) => {
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
+    const newPost: Post = {
+      id: data.id,
+      author: userProfile?.fullName || userProfile?.userName || 'Bạn',
+      avatar: userProfile?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userProfile?.userName}`,
+      time: data.createdAt ? new Date(data.createdAt).toLocaleString('vi-VN') : 'Vừa xong',
+      content: data.content || '',
+      image: data.imageUrl ? `${API_BASE_URL}${data.imageUrl}` : undefined,
+      likes: data.likes?.length ?? 0,
+      comments: data.comments?.length ?? 0,
+      liked: false,
+    };
+
+    setPosts(prev => [newPost, ...prev]);
+  };
 
   // Xử lý định dạng ngày sinh chuẩn tiếng Việt
   const formatBirthday = (dateString: string) => {
@@ -187,7 +206,10 @@ const App: React.FC = () => {
                   className="w-10 h-10 rounded-full" 
                   alt="avatar" 
                 />
-                <button className="w-full bg-[#F0F2F5] hover:bg-[#E4E6EB] text-[#65676B] text-left px-4 py-2.5 rounded-full text-[17px] transition-colors">
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="w-full bg-[#F0F2F5] hover:bg-[#E4E6EB] text-[#65676B] text-left px-4 py-2.5 rounded-full text-[17px] transition-colors"
+                >
                     {firstName} ơi, bạn đang nghĩ gì thế?
                 </button>
               </div>
@@ -197,6 +219,16 @@ const App: React.FC = () => {
                 <PostTypeBtn icon={<Smile className="text-[#EAB308]" size={20}/>} label="Cảm xúc" />
               </div>
             </div>
+
+            <CreatePostModal
+              isOpen={isModalOpen}
+              onClose={() => setIsModalOpen(false)}
+              userData={userProfile}
+              onPostSuccess={(data: any) => {
+                handleNewPost(data);
+                setIsModalOpen(false);
+              }}
+            />
 
             {/* Danh sách bài viết */}
             {posts.map(post => (
