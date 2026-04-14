@@ -1,13 +1,25 @@
-﻿import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
-import { X, Image as ImageIcon, Globe } from 'lucide-react';
+import { X, Image as ImageIcon, Globe, Hash } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
 
 const CreatePostModal = ({ isOpen, onClose, userData, onPostSuccess }: any) => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm();
+  const [contentValue, setContentValue] = useState('');
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting }, watch } = useForm();
+
+  // Extract hashtags from content
+  const extractHashtags = (text: string): string[] => {
+    const regex = /#[\w]+/g;
+    const matches = text.match(regex) || [];
+    return Array.from(new Set(matches)); // Remove duplicates
+  };
+
+  const hashtags = useMemo(() => {
+    return extractHashtags(contentValue);
+  }, [contentValue]);
 
   if (!isOpen) return null;
 
@@ -106,10 +118,31 @@ const CreatePostModal = ({ isOpen, onClose, userData, onPostSuccess }: any) => {
 
           <textarea
             {...register('content', { required: 'Bạn chưa nhập gì cả!' })}
+            onChange={(e) => {
+              setContentValue(e.target.value);
+              register('content').onChange?.(e);
+            }}
             placeholder={`${displayName} ơi, bạn đang nghĩ gì thế?`}
             className="w-full min-h-[140px] rounded-3xl border border-slate-200 px-4 py-3 text-sm outline-none resize-none focus:border-blue-500"
           />
           {errors.content && <p className="text-sm text-red-500">{errors.content.message as string}</p>}
+
+          {/* Hashtags Preview */}
+          {hashtags.length > 0 && (
+            <div className="bg-blue-50 rounded-2xl p-3 border border-blue-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Hash size={16} className="text-blue-600" />
+                <span className="text-xs font-semibold text-blue-900">Hashtags Detected ({hashtags.length})</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {hashtags.map((tag, idx) => (
+                  <span key={idx} className="inline-block px-3 py-1 bg-white text-blue-600 rounded-full text-xs font-medium border border-blue-200">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {imagePreview && (
             <div className="relative">

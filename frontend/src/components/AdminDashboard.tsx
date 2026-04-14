@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, Users, AlertTriangle, MessageSquare, Lock, Unlock, Trash2, Check, X, Eye } from 'lucide-react';
+import { LogOut, Lock, Unlock, Trash2, Check, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { adminAPI } from '../api/adminAPI';
 

@@ -80,6 +80,9 @@ builder.Services.AddScoped<CommentService>();
 builder.Services.AddScoped<LikeService>();
 builder.Services.AddScoped<AdminService>();
 
+builder.Services.AddScoped<IHashtagRepository, HashtagRepository>();
+builder.Services.AddScoped<IPostHashtagRepository, PostHashtagRepository>();
+
 builder.Services.AddScoped<IFriendshipRepository, FriendshipRepository>();
 builder.Services.AddScoped<IStoryRepository, StoryRepository>();
 
