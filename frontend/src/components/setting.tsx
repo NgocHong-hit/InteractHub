@@ -1,39 +1,26 @@
 import React, { useState, useEffect } from 'react'; // ĐÃ NHÚNG: Thêm useEffect
 import Navbar from './Navbar';
 import { 
-  Home, 
-  Users, 
-  MessageCircle, 
-  Bell, 
-  Plus, 
-  MoreHorizontal, 
-  ThumbsUp, 
-  MessageSquare, 
-  Share2, 
-  Image as ImageIcon, 
-  Smile, 
-  ChevronDown,
-  MapPin,
-  Calendar,
+  Users,
+  Plus,
+  ThumbsUp,
+  MessageSquare,
   Camera,
   Edit2,
-  Flag,
-  Grid,
-  Heart,
+  MapPin,
+  Calendar,
   User,
   Lock,
   Shield,
-  Globe,
   LogOut,
   ChevronRight,
-  Check,
   Settings,
   BellRing,
   Palette,
-  HelpCircle,
-  Key
+  HelpCircle
 } from 'lucide-react';
-import axiosClient from '../api/axiosClient';
+import profileAPI from '../api/profileAPI';
+import type { UserProfile } from '../api/profileAPI';
 
 // --- ĐỊNH NGHĨA KIỂU DỮ LIỆU ---
 
@@ -62,14 +49,18 @@ const App: React.FC = () => {
   const [activeSettingsCategory, setActiveSettingsCategory] = useState('account');
   
   // --- ĐÃ NHÚNG: State lưu dữ liệu từ Backend ---
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [editProfile, setEditProfile] = useState<Partial<UserProfile> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   // --- ĐÃ NHÚNG: Hàm lấy dữ liệu và format ngày sinh ---
   const fetchProfile = async () => {
     try {
-      const response = await axiosClient.get('/userprofile/me');
-      setUserProfile(response.data);
+      const response = await profileAPI.getMe();
+      setUserProfile(response);
+      setEditProfile(response);
     } catch (error) {
       console.error("Lỗi tải profile:", error);
     } finally {
@@ -77,11 +68,49 @@ const App: React.FC = () => {
     }
   };
 
+  const handleProfileChange = (field: keyof UserProfile, value: string) => {
+    setEditProfile((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleCancelEdit = () => {
+    setEditProfile(userProfile);
+    setSaveStatus('idle');
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editProfile) return;
+
+    setIsSaving(true);
+    setSaveStatus('idle');
+
+    try {
+      await profileAPI.updateProfile({
+        fullName: editProfile.fullName,
+        bio: editProfile.bio,
+        phoneNumber: editProfile.phoneNumber,
+        gender: editProfile.gender,
+        dateOfBirth: editProfile.dateOfBirth,
+        address: editProfile.address,
+      });
+      setUserProfile((prev) => ({ ...(prev ?? {}), ...editProfile } as UserProfile));
+      setSaveStatus('success');
+    } catch (error) {
+      console.error('Lỗi cập nhật profile:', error);
+      setSaveStatus('error');
+    } finally {
+      setIsSaving(false);
+      window.setTimeout(() => setSaveStatus('idle'), 4000);
+    }
+  };
+
   useEffect(() => {
     fetchProfile();
   }, []);
 
-  const formatBirthday = (dateString: string) => {
+  const formatBirthday = (dateString?: string) => {
     if (!dateString) return "Chưa cập nhật";
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return "Chưa cập nhật";
@@ -181,18 +210,95 @@ const App: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="space-y-1">
-                        {/* ĐÃ NHÚNG: Dữ liệu thật vào SettingsItem */}
-                        <SettingsItem label="Họ và tên" value={displayName} />
-                        <SettingsItem label="Email liên hệ" value={userProfile?.email || "Chưa cập nhật"} />
-                        <SettingsItem label="Ngày sinh" value={formatBirthday(userProfile?.dateOfBirth)} />
-                        <SettingsItem label="Giới tính" value={userProfile?.gender || "Chưa xác định"} />
-                        <SettingsItem label="Địa chỉ" value={userProfile?.address || "Chưa cập nhật"} />
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Họ và tên</label>
+                          <input
+                            type="text"
+                            value={editProfile?.fullName || ''}
+                            onChange={(e) => handleProfileChange('fullName', e.target.value)}
+                            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Email liên hệ</label>
+                          <input
+                            type="email"
+                            value={editProfile?.email || ''}
+                            disabled
+                            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-500 outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Ngày sinh</label>
+                          <input
+                            type="date"
+                            value={editProfile?.dateOfBirth?.slice(0, 10) || ''}
+                            onChange={(e) => handleProfileChange('dateOfBirth', e.target.value)}
+                            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Giới tính</label>
+                          <select
+                            value={editProfile?.gender || ''}
+                            onChange={(e) => handleProfileChange('gender', e.target.value)}
+                            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                          >
+                            <option value="">Chưa xác định</option>
+                            <option value="Nam">Nam</option>
+                            <option value="Nữ">Nữ</option>
+                            <option value="Khác">Khác</option>
+                          </select>
+                        </div>
+
+                        <div className="sm:col-span-2">
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Địa chỉ</label>
+                          <input
+                            type="text"
+                            value={editProfile?.address || ''}
+                            onChange={(e) => handleProfileChange('address', e.target.value)}
+                            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-2">
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Tiểu sử</label>
+                          <textarea
+                            value={editProfile?.bio || ''}
+                            onChange={(e) => handleProfileChange('bio', e.target.value)}
+                            rows={4}
+                            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                          />
+                        </div>
                       </div>
 
-                      <div className="pt-4 flex justify-end gap-3">
-                        <button className="px-6 py-2 rounded-lg font-bold text-gray-600 hover:bg-gray-100 transition-colors">Hủy</button>
-                        <button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-bold shadow-md">Lưu tất cả</button>
+                      {saveStatus === 'success' && (
+                        <div className="rounded-xl bg-green-50 border border-green-200 p-3 text-sm text-green-700">Cập nhật profile thành công.</div>
+                      )}
+                      {saveStatus === 'error' && (
+                        <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700">Không thể lưu profile, vui lòng thử lại.</div>
+                      )}
+
+                      <div className="pt-4 flex flex-wrap justify-end gap-3">
+                        <button
+                          onClick={handleCancelEdit}
+                          type="button"
+                          className="px-6 py-2 rounded-lg font-bold text-gray-600 hover:bg-gray-100 transition-colors"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          onClick={handleSaveProfile}
+                          type="button"
+                          disabled={isSaving}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-bold shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isSaving ? 'Đang lưu...' : 'Lưu tất cả'}
+                        </button>
                       </div>
                     </div>
                   )}
@@ -311,22 +417,6 @@ const ActionButton: React.FC<{ icon: React.ReactNode; text: string; active?: boo
   <button className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg font-bold text-[15px] hover:bg-gray-100 transition-colors ${active ? 'text-[#0866FF]' : 'text-[#65676B]'}`}>
     {icon} {text}
   </button>
-);
-
-const PostTypeBtn: React.FC<{ icon: React.ReactNode; label: string }> = ({ icon, label }) => (
-  <button className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-gray-100 rounded-lg transition-colors font-semibold text-[#65676B] text-[15px]">
-    {icon} {label}
-  </button>
-);
-
-const SettingsItem: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="flex justify-between items-center py-4 border-b border-gray-50 last:border-0 group hover:bg-gray-50/50 px-2 rounded-lg transition-all">
-    <div>
-      <p className="text-[13px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{label}</p>
-      <p className="text-base font-semibold text-gray-800">{value}</p>
-    </div>
-    <button className="text-blue-600 text-sm font-bold bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors">Chỉnh sửa</button>
-  </div>
 );
 
 export default App;
