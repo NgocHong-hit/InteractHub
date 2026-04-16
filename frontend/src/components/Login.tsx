@@ -1,43 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { LogIn, Mail, Lock, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import axiosClient from '../api/axiosClient';
+import accountAPI from '../api/accountAPI';
 
 const App: React.FC = () => {
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { register, handleSubmit, formState: { errors } } = useForm();
-  const navigate = useNavigate(); // 2. Khởi tạo hook điều hướng
+  const navigate = useNavigate();
 
-const onSubmit = async (data: any) => {
-  try {
-    const response = await axiosClient.post('/account/login', {
-      userName: data.email,
-      password: data.password
-    });
+  const onSubmit = async (data: any) => {
+    setErrorMessage(null);
+    try {
+      const response = await accountAPI.login({
+        userName: data.email,
+        password: data.password,
+      });
 
-    // DÒNG NÀY ĐỂ KIỂM TRA:
-    console.log("Dữ liệu nhận từ Server:", response.data);
+      if (response.token) {
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response));
 
-    const userData = response.data;
-
-    if (userData.token) {
-      localStorage.setItem('token', userData.token);
-      localStorage.setItem('user', JSON.stringify(userData));
-
-      // KIỂM TRA CHỮ 'Admin' (Phải viết hoa chữ A giống trong DB)
-      if (userData.role === 'Admin') {
-        alert("Đăng nhập quyền ADMIN thành công!");
-        navigate('/admin'); 
-      } else {
-        alert("Đăng nhập thành công!");
-        navigate('/homepages');
+        if (response.role === 'Admin') {
+          navigate('/admin');
+        } else {
+          navigate('/homepages');
+        }
       }
+    } catch (error: any) {
+      const serverMessage = error.response?.data?.message || error.response?.data || 'Đăng nhập thất bại. Vui lòng thử lại.';
+      setErrorMessage(typeof serverMessage === 'string' ? serverMessage : JSON.stringify(serverMessage));
+      console.error('Lỗi đăng nhập:', error.response?.data || error);
     }
-  } catch (error: any) {
-    console.error("Lỗi đăng nhập:", error.response?.data);
-  }
-};
-  
+  };
 
   return (
     // SỬA: min-h-screen thành h-screen và thêm overflow-hidden để triệt tiêu thanh cuộn
@@ -82,21 +77,21 @@ const onSubmit = async (data: any) => {
           </div>
           {/* SỬA: Giảm space-y-6 xuống space-y-4 */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-9">
-            
+            {errorMessage && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {errorMessage}
+              </div>
+            )}
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                 <Mail size={18} />
               </div>
               <input 
-                type="email"
+                type="text"
                 {...register("email", { 
-                  required: "Email không được để trống",
-                pattern: { 
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, 
-                  message: "Email không đúng định dạng (Ví dụ: example@gmail.com)" 
-                }                })}
+                  required: "Email hoặc username không được để trống",
+                })}
                 placeholder="Email or username"
-                // SỬA: py-4 thành py-3 để giảm chiều dọc
                 className={`w-full pl-11 pr-4 py-3 bg-gray-50 border ${errors.email ? 'border-red-500' : 'border-gray-200'} rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0866FF] outline-none transition-all text-sm`}
               />
               {errors.email && <p className="text-red-500 text-[10px] mt-1 absolute font-medium">{errors.email.message as string}</p>}

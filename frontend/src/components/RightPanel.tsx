@@ -1,14 +1,20 @@
-import React from 'react';
-import { Video, Search, Settings, ChevronRight } from 'lucide-react';
-import {Link}  from 'react-router-dom';
+import { Video, Search, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 function RightPanel({ contacts, userData }: any) {
+  const storedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+  const persistedUser = storedUser ? JSON.parse(storedUser) : null;
+  const currentUser = userData || persistedUser;
+  const profileName = currentUser?.fullName || currentUser?.userName || 'Người dùng';
+  const profileHandle = currentUser?.userName ? `@${currentUser.userName}` : '@guest';
+  const profileSeed = currentUser?.userName || 'User';
+
   return (
     <aside className="hidden xl:block w-[320px] sticky top-20 h-fit space-y-6">
 
       {/* --- PHẦN 1: PROFILE CÁ NHÂN (MỚI THÊM) --- */}
       {/* Chuyển thẻ <div> ngoài cùng thành <Link> để nhấp vào bất cứ đâu cũng chuyển trang */}
       <Link
-        to= "/profile"
+        to="/profile"
         className="block bg-white rounded-2xl shadow-sm border border-gray-100 p-5 group cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
       >
         <div className="flex items-center justify-between mb-4">
@@ -18,22 +24,18 @@ function RightPanel({ contacts, userData }: any) {
             <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-blue-100 p-0.5">
 
               <img
-
-                src="https://api.dicebear.com/7.x/avataaars/svg?seed=User"
-
+                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profileSeed}`}
                 className="w-full h-full rounded-full object-cover"
-
                 alt="My Profile"
-
               />
 
             </div>
 
             <div>
 
-              <h4 className="font-bold text-gray-900 text-sm">Minh Quân</h4>
+              <h4 className="font-bold text-gray-900 text-sm">{profileName}</h4>
 
-              <p className="text-[11px] text-gray-400 font-medium">@minhquan_dev</p>
+              <p className="text-[11px] text-gray-400 font-medium">{profileHandle}</p>
 
             </div>
             <div className="grid grid-cols-2 gap-5 pt-5 border-t border-gray-50">
