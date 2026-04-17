@@ -90,7 +90,7 @@ public class PostsController : ControllerBase
 
         try
         {
-            var createdPost = await _postService.CreatePostAsync(post);
+            var createdPost = await _postService.CreatePostWithHashtagsAsync(post);
             var createdPostWithRelations = await _postService.GetPostByIdAsync(createdPost.Id);
             return CreatedAtAction(nameof(GetPostById), new { id = createdPost.Id }, createdPostWithRelations ?? createdPost);
         }

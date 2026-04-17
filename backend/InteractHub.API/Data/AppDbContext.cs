@@ -56,5 +56,21 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<int>, int>
         .WithMany(u => u.Friendships2)
         .HasForeignKey(f => f.UserId2)
         .OnDelete(DeleteBehavior.Restrict);
+
+    // Tạo sẵn 2 quyền trong DB
+   modelBuilder.Entity<IdentityRole<int>>().HasData(
+        new IdentityRole<int> 
+        { 
+            Id = 1, 
+            Name = "Admin", 
+            NormalizedName = "ADMIN" 
+        },
+        new IdentityRole<int> 
+        { 
+            Id = 2, 
+            Name = "User", 
+            NormalizedName = "USER" 
+        }
+    );
 }
 }

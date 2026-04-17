@@ -20,6 +20,7 @@ public class PostRepository : IPostRepository
             .Include(p => p.User)
             .Include(p => p.Comments).ThenInclude(c => c.User)
             .Include(p => p.Likes).ThenInclude(l => l.User)
+            .Include(p => p.PostHashtags).ThenInclude(ph => ph.Hashtag)
             .FirstOrDefaultAsync(p => p.Id == id);
     }
 
@@ -29,6 +30,7 @@ public class PostRepository : IPostRepository
             .Include(p => p.User)
             .Include(p => p.Comments).ThenInclude(c => c.User)
             .Include(p => p.Likes).ThenInclude(l => l.User)
+            .Include(p => p.PostHashtags).ThenInclude(ph => ph.Hashtag)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
     }
@@ -40,6 +42,7 @@ public class PostRepository : IPostRepository
             .Include(p => p.User)
             .Include(p => p.Comments).ThenInclude(c => c.User)
             .Include(p => p.Likes).ThenInclude(l => l.User)
+            .Include(p => p.PostHashtags).ThenInclude(ph => ph.Hashtag)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
     }

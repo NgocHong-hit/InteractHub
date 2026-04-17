@@ -1,215 +1,424 @@
-import React, { useState } from 'react';
-import { 
-  Users, Image as ImageIcon, AlertTriangle, BarChart3, 
-  Flag, CheckCircle, Trash2, ShieldCheck, Filter, 
-  Search, MoreVertical, LogOut 
-} from 'lucide-react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { LogOut, Lock, Unlock, Trash2, Check, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { adminAPI } from '../api/adminAPI';
 
-// Thành phần hiển thị các thẻ thống kê tóm tắt
-const AdminStatCard = ({ icon, label, value, trend, highlight = false }: any) => (
-  <div className={`bg-white p-6 rounded-2xl border border-gray-100 shadow-sm transition-all hover:shadow-md ${highlight ? 'ring-2 ring-red-50' : ''}`}>
-    <div className="flex justify-between items-start mb-4">
-      <div className={`p-3 rounded-xl ${highlight ? 'bg-red-50' : 'bg-blue-50'}`}>
-        {React.cloneElement(icon, { size: 24 })}
-      </div>
-      {trend && (
-        <span className={`text-[10px] font-black px-2 py-1 rounded-full ${trend.includes('+') ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-500'}`}>
-          {trend}
-        </span>
-      )}
-    </div>
-    <div>
-      <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1">{label}</p>
-      <h3 className="text-3xl font-black text-gray-900">{value}</h3>
-    </div>
-  </div>
-);
+const AdminDashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [stats, setStats] = useState<any>(null);
+  const [users, setUsers] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const token = localStorage.getItem('token');
 
-const App: React.FC = () => {
-  // 1. Dữ liệu mẫu cho các chỉ số thống kê
-  const [stats] = useState({
-    totalUsers: '12,842',
-    totalPosts: '85,420',
-    reportsPending: 14,
-  });
+  // Fetch statistics
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setError(null);
+        const data = await adminAPI.getStatistics();
+        setStats(data);
+      } catch (err: any) {
+        console.error('Error fetching stats:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
 
-  // 2. Danh sách các bài viết bị người dùng báo cáo vi phạm
-  const [reportedPosts, setReportedPosts] = useState([
-    { 
-      id: 1, 
-      author: 'Nguyễn Văn A', 
-      content: 'Nội dung chứa thông tin sai lệch về y tế...', 
-      reason: 'Tin giả', 
-      reporter: 'ngoc_hong12', 
-      severity: 'high', 
-      time: '10 phút trước' 
-    },
-    { 
-      id: 2, 
-      author: 'Trần Thị B', 
-      content: 'Hình ảnh không phù hợp với tiêu chuẩn cộng đồng', 
-      reason: 'Nội dung nhạy cảm', 
-      reporter: 'minh_quan_dev', 
-      severity: 'medium', 
-      time: '1 giờ trước' 
-    },
-    { 
-      id: 3, 
-      author: 'Lê Văn C', 
-      content: 'Xúc phạm người khác trong phần bình luận', 
-      reason: 'Quấy rối', 
-      reporter: 'hoang_nam_it', 
-      severity: 'low', 
-      time: '3 giờ trước' 
-    },
-  ]);
+  // Fetch users
+  useEffect(() => {
+    if (activeTab === 'users') {
+      const fetchUsers = async () => {
+        try {
+          setLoading(true);
+          const data = await adminAPI.getAllUsers(page);
+          setUsers(data.users || data);
+        } catch (err: any) {
+          console.error('Error fetching users:', err);
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchUsers();
+    }
+  }, [activeTab, page]);
 
-  // 3. Xử lý các tác vụ quản trị
-  const handleDismissReport = (id: number) => {
-    setReportedPosts(reportedPosts.filter(post => post.id !== id));
+  // Fetch reports
+  useEffect(() => {
+    if (activeTab === 'reports') {
+      const fetchReports = async () => {
+        try {
+          setLoading(true);
+          const data = await adminAPI.getReports(undefined, page);
+          setReports(data.reports || data);
+        } catch (err: any) {
+          console.error('Error fetching reports:', err);
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchReports();
+    }
+  }, [activeTab, page]);
+
+  // Fetch posts for moderation
+  useEffect(() => {
+    if (activeTab === 'moderation') {
+      const fetchPosts = async () => {
+        try {
+          setLoading(true);
+          const data = await adminAPI.getAllPosts(page);
+          setPosts(data.posts || data);
+        } catch (err: any) {
+          console.error('Error fetching posts:', err);
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchPosts();
+    }
+  }, [activeTab, page]);
+
+  // Action handlers
+  const handleBlockUser = async (userId: number) => {
+    if (!window.confirm('Block this user? They will not be able to login.')) return;
+    try {
+      await adminAPI.blockUser(userId);
+      setUsers(users.map(u => u.id === userId ? { ...u, isActive: false } : u));
+    } catch (err: any) {
+      setError(err.message);
+    }
   };
 
-  const handleDeletePost = (id: number) => {
-    // Lưu ý: Không dùng alert/confirm trong môi trường thực tế, nên dùng modal UI tùy chỉnh
-    if(window.confirm("Bạn có chắc chắn muốn xóa bài viết vi phạm này không?")) {
-      setReportedPosts(reportedPosts.filter(post => post.id !== id));
+  const handleUnblockUser = async (userId: number) => {
+    try {
+      await adminAPI.unblockUser(userId);
+      setUsers(users.map(u => u.id === userId ? { ...u, isActive: true } : u));
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleApproveReport = async (reportId: number) => {
+    if (!window.confirm('Approve this report? The post will be deleted.')) return;
+    try {
+      await adminAPI.approveReport(reportId);
+      setReports(reports.filter(r => r.id !== reportId));
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleRejectReport = async (reportId: number) => {
+    try {
+      await adminAPI.rejectReport(reportId);
+      setReports(reports.filter(r => r.id !== reportId));
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleDeletePost = async (postId: number) => {
+    if (!window.confirm('Delete this post permanently?')) return;
+    try {
+      await adminAPI.deletePost(postId);
+      setPosts(posts.filter(p => p.id !== postId));
+    } catch (err: any) {
+      setError(err.message);
     }
   };
 
   const handleLogout = () => {
-    if(window.confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống quản trị?")) {
-      console.log("Admin đã đăng xuất");
-    }
+    localStorage.removeItem('token');
+    localStorage.removeItem('userId');
+    navigate('/login');
   };
+
+  if (loading && activeTab === 'dashboard') {
+    return <div className="min-h-screen flex items-center justify-center text-slate-600">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-8">
-      <div className="max-w-[1200px] mx-auto px-4 animate-in fade-in duration-500 pb-10">
-        
-        {/* THANH TIÊU ĐỀ (HEADER) */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+      <div className="max-w-[1400px] mx-auto px-4 pb-10">
+        {/* HEADER */}
+        <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight italic">Hệ thống Quản trị</h1>
-            <p className="text-slate-500 font-medium">Bảng điều khiển dành cho Quản trị viên</p>
+            <h1 className="text-3xl font-bold text-slate-900">Admin Dashboard</h1>
+            <p className="text-slate-500">System Management and Control</p>
           </div>
-          <Link to ="/login" >
-          <div className="flex items-center gap-3">
-            {/* Nút Đăng xuất - Giữ lại như yêu cầu trước đó */}
-            <button 
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white text-red-600 border border-red-100 rounded-2xl font-bold text-sm hover:bg-red-50 transition-all shadow-sm active:scale-95"
-            >
-              <LogOut size={18} />
-              Đăng xuất
-            </button>
-          </div>
-          </Link>
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+          >
+            <LogOut size={18} /> Logout
+          </button>
         </div>
 
-        {/* CÁC THẺ THỐNG KÊ TỔNG QUAN */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <AdminStatCard icon={<Users className="text-blue-600" />} label="Tổng người dùng" value={stats.totalUsers}  />
-          <AdminStatCard icon={<ImageIcon className="text-green-600" />} label="Tổng bài viết" value={stats.totalPosts}  />
-          <AdminStatCard icon={<AlertTriangle className="text-red-600" />} label="Báo cáo chờ xử lý" value={stats.reportsPending} highlight />
-        </div>
+        {/* ERROR MESSAGE */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-300 rounded-lg text-red-700">
+            ⚠️ {error}
+          </div>
+        )}
 
-        {/* KHU VỰC QUẢN LÝ NỘI DUNG VI PHẠM */}
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-          
-          {/* Thanh công cụ của bảng */}
-          <div className="p-6 border-b border-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/20">
-            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <Flag size={20} className="text-red-500" /> Nội dung bị báo cáo
-            </h3>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <div className="relative flex-1">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input 
-                  type="text" 
-                  placeholder="Tìm tác giả..." 
-                  className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" 
-                />
-              </div>
-              <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50">
-                <Filter size={16} /> Lọc
-              </button>
+        {/* STATISTICS CARDS */}
+        {stats && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="p-6 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="text-blue-600 font-bold text-sm mb-2">TOTAL USERS</div>
+              <div className="text-4xl font-bold text-blue-900">{stats.totalUsers}</div>
+            </div>
+            <div className="p-6 bg-green-50 rounded-lg border border-green-200">
+              <div className="text-green-600 font-bold text-sm mb-2">TOTAL POSTS</div>
+              <div className="text-4xl font-bold text-green-900">{stats.totalPosts}</div>
+            </div>
+            <div className="p-6 bg-purple-50 rounded-lg border border-purple-200">
+              <div className="text-purple-600 font-bold text-sm mb-2">TOTAL COMMENTS</div>
+              <div className="text-4xl font-bold text-purple-900">{stats.totalComments}</div>
+            </div>
+            <div className="p-6 bg-red-50 rounded-lg border border-red-200">
+              <div className="text-red-600 font-bold text-sm mb-2">PENDING REPORTS</div>
+              <div className="text-4xl font-bold text-red-900">{stats.pendingReports}</div>
             </div>
           </div>
+        )}
 
-          {/* Bảng danh sách bài viết */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="text-[11px] uppercase tracking-widest text-slate-400 font-black border-b border-slate-50 bg-slate-50/30">
-                  <th className="px-6 py-4">Người đăng</th>
-                  <th className="px-6 py-4">Nội dung tóm lược</th>
-                  <th className="px-6 py-4">Lý do báo cáo</th>
-                  <th className="px-6 py-4 text-center">Mức độ</th>
-                  <th className="px-6 py-4 text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {reportedPosts.map((report) => (
-                  <tr key={report.id} className="hover:bg-slate-50/40 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-slate-900 text-sm">{report.author}</div>
-                      <div className="text-[10px] text-slate-400 font-bold uppercase">{report.time}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-sm text-slate-600 max-w-xs truncate italic">"{report.content}"</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-bold text-red-500">{report.reason}</div>
-                      <div className="text-[10px] text-slate-400 font-medium">Bởi: {report.reporter}</div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase inline-block ${
-                        report.severity === 'high' ? 'bg-red-50 text-red-600 border border-red-100' :
-                        report.severity === 'medium' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
-                        'bg-blue-50 text-blue-600 border border-blue-100'
-                      }`}>
-                        {report.severity === 'high' ? 'Khẩn cấp' : report.severity === 'medium' ? 'Cảnh báo' : 'Thấp'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex justify-end gap-1">
-                        <button 
-                          onClick={() => handleDismissReport(report.id)}
-                          className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all"
-                          title="Bỏ qua báo cáo"
+        {/* TABS */}
+        <div className="flex gap-4 mb-6 border-b border-slate-200 overflow-x-auto">
+          {[
+            { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+            { id: 'users', label: 'Users', icon: '👥' },
+            { id: 'reports', label: 'Reports', icon: '⚠️' },
+            { id: 'moderation', label: 'Moderation', icon: '🛡️' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id);
+                setPage(1);
+              }}
+              className={`px-4 py-2 font-semibold whitespace-nowrap border-b-2 transition ${
+                activeTab === tab.id
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* CONTENT */}
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
+          
+          {/* DASHBOARD TAB */}
+          {activeTab === 'dashboard' && (
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 mb-6">System Overview</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-6 bg-slate-50 rounded-lg">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4">Quick Stats</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-slate-700">Active Users:</span>
+                      <span className="font-bold">{stats?.totalUsers || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-700">Total Posts:</span>
+                      <span className="font-bold">{stats?.totalPosts || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-700">Total Comments:</span>
+                      <span className="font-bold">{stats?.totalComments || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-700">Pending Reports:</span>
+                      <span className="font-bold text-red-600">{stats?.pendingReports || 0}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-6 bg-slate-50 rounded-lg">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4">System Health</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <span className="text-slate-700">Database: Connected</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <span className="text-slate-700">API: Running</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <span className="text-slate-700">Authentication: Active</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* USERS TAB */}
+          {activeTab === 'users' && (
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 mb-6">User Management</h2>
+              {loading ? (
+                <p className="text-slate-600">Loading users...</p>
+              ) : users.length === 0 ? (
+                <p className="text-slate-600">No users found</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-100 border-b">
+                      <tr>
+                        <th className="px-4 py-3 font-bold">Username</th>
+                        <th className="px-4 py-3 font-bold">Email</th>
+                        <th className="px-4 py-3 font-bold">Full Name</th>
+                        <th className="px-4 py-3 font-bold">Status</th>
+                        <th className="px-4 py-3 font-bold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {users.map(user => (
+                        <tr key={user.id} className="hover:bg-slate-50">
+                          <td className="px-4 py-3">{user.userName}</td>
+                          <td className="px-4 py-3">{user.email}</td>
+                          <td className="px-4 py-3">{user.fullName || '-'}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${user.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                              {user.isActive ? 'Active' : 'Blocked'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 flex gap-2">
+                            {user.isActive ? (
+                              <button
+                                onClick={() => handleBlockUser(user.id)}
+                                className="p-2 bg-red-100 text-red-600 rounded hover:bg-red-200 transition"
+                                title="Block user"
+                              >
+                                <Lock size={16} />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleUnblockUser(user.id)}
+                                className="p-2 bg-green-100 text-green-600 rounded hover:bg-green-200 transition"
+                                title="Unblock user"
+                              >
+                                <Unlock size={16} />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* REPORTS TAB */}
+          {activeTab === 'reports' && (
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 mb-6">Report Management</h2>
+              {loading ? (
+                <p className="text-slate-600">Loading reports...</p>
+              ) : reports.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-slate-600 text-lg">✓ No pending reports - System is safe!</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-100 border-b">
+                      <tr>
+                        <th className="px-4 py-3 font-bold">Post Author</th>
+                        <th className="px-4 py-3 font-bold">Reason</th>
+                        <th className="px-4 py-3 font-bold">Reported By</th>
+                        <th className="px-4 py-3 font-bold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {reports.map(report => (
+                        <tr key={report.id} className="hover:bg-slate-50">
+                          <td className="px-4 py-3">{report.postAuthor || 'Unknown'}</td>
+                          <td className="px-4 py-3">{report.reason || 'No reason'}</td>
+                          <td className="px-4 py-3">{report.reportedBy || 'Anonymous'}</td>
+                          <td className="px-4 py-3 flex gap-2">
+                            <button
+                              onClick={() => handleApproveReport(report.id)}
+                              className="p-2 bg-green-100 text-green-600 rounded hover:bg-green-200 transition"
+                              title="Approve and delete post"
+                            >
+                              <Check size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleRejectReport(report.id)}
+                              className="p-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition"
+                              title="Reject report"
+                            >
+                              <X size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* MODERATION TAB */}
+          {activeTab === 'moderation' && (
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 mb-6">Content Moderation</h2>
+              {loading ? (
+                <p className="text-slate-600">Loading posts...</p>
+              ) : posts.length === 0 ? (
+                <p className="text-slate-600">No posts found</p>
+              ) : (
+                <div className="space-y-4">
+                  {posts.map(post => (
+                    <div key={post.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <p className="font-bold text-slate-900">{post.author || 'Unknown'}</p>
+                          <p className="text-slate-700 my-2">{post.content || post.text || 'No content'}</p>
+                          <p className="text-xs text-slate-500">
+                            {post.createdAt ? new Date(post.createdAt).toLocaleString() : 'Unknown date'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDeletePost(post.id)}
+                          className="p-2 bg-red-100 text-red-600 rounded hover:bg-red-200 transition"
+                          title="Delete post"
                         >
-                          <CheckCircle size={20} />
-                        </button>
-                        <button 
-                          onClick={() => handleDeletePost(report.id)}
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                          title="Xóa vĩnh viễn"
-                        >
-                          <Trash2 size={20} />
+                          <Trash2 size={18} />
                         </button>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* Trạng thái khi không có báo cáo nào */}
-            {reportedPosts.length === 0 && (
-              <div className="py-24 text-center flex flex-col items-center">
-                <div className="bg-green-50 p-6 rounded-full mb-4 ring-8 ring-green-50/50">
-                  <ShieldCheck size={60} className="text-green-500" />
+                    </div>
+                  ))}
                 </div>
-                <h3 className="text-xl font-bold text-slate-900">Hệ thống an toàn!</h3>
-                <p className="text-slate-500 mt-1 max-w-xs mx-auto">Hiện tại không có bài viết vi phạm nào cần bạn phê duyệt.</p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
     </div>
   );
 };
 
-export default App;
+export default AdminDashboard;

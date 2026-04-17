@@ -49,7 +49,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Comments", (string)null);
+                    b.ToTable("Comments");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.Friendship", b =>
@@ -79,7 +79,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasIndex("UserId2");
 
-                    b.ToTable("Friendships", (string)null);
+                    b.ToTable("Friendships");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.Hashtag", b =>
@@ -96,7 +96,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Hashtags", (string)null);
+                    b.ToTable("Hashtags");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.Like", b =>
@@ -106,6 +106,9 @@ namespace InteractHub.API.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("PostId")
                         .HasColumnType("int");
@@ -119,7 +122,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Likes", (string)null);
+                    b.ToTable("Likes");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.Notification", b =>
@@ -147,7 +150,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.Post", b =>
@@ -175,7 +178,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Posts", (string)null);
+                    b.ToTable("Posts");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.PostHashtag", b =>
@@ -190,7 +193,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasIndex("HashtagId");
 
-                    b.ToTable("PostHashtags", (string)null);
+                    b.ToTable("PostHashtags");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.Report", b =>
@@ -224,7 +227,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasIndex("ReporterId");
 
-                    b.ToTable("Reports", (string)null);
+                    b.ToTable("Reports");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.Story", b =>
@@ -251,7 +254,7 @@ namespace InteractHub.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Stories", (string)null);
+                    b.ToTable("Stories");
                 });
 
             modelBuilder.Entity("InteractHub.API.Models.User", b =>
@@ -264,6 +267,9 @@ namespace InteractHub.API.Migrations
 
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
+
+                    b.Property<string>("Address")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("AvatarUrl")
                         .HasColumnType("nvarchar(max)");
@@ -278,6 +284,9 @@ namespace InteractHub.API.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("DateOfBirth")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
@@ -286,6 +295,9 @@ namespace InteractHub.API.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("FullName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Gender")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("LockoutEnabled")
@@ -362,6 +374,20 @@ namespace InteractHub.API.Migrations
                         .HasFilter("[NormalizedName] IS NOT NULL");
 
                     b.ToTable("AspNetRoles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Name = "Admin",
+                            NormalizedName = "ADMIN"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "User",
+                            NormalizedName = "USER"
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
@@ -538,7 +564,7 @@ namespace InteractHub.API.Migrations
             modelBuilder.Entity("InteractHub.API.Models.Post", b =>
                 {
                     b.HasOne("InteractHub.API.Models.User", "User")
-                        .WithMany()
+                        .WithMany("Posts")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -667,6 +693,8 @@ namespace InteractHub.API.Migrations
                     b.Navigation("Friendships2");
 
                     b.Navigation("Likes");
+
+                    b.Navigation("Posts");
                 });
 #pragma warning restore 612, 618
         }

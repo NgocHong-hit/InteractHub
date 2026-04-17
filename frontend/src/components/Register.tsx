@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { 
-  UserPlus, Mail, Lock, User, Phone, ArrowLeft, 
+  UserPlus, Mail, Lock, User, Phone, 
   Loader2, MapPin, Calendar, Users 
 } from 'lucide-react';
-import axiosClient from '../api/axiosClient';
+import accountAPI from '../api/accountAPI';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -15,28 +15,27 @@ const Register: React.FC = () => {
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      const response = await axiosClient.post('/account/register', {
+      const response = await accountAPI.register({
         userName: data.email.split('@')[0],
         email: data.email,
         password: data.password,
         fullName: data.fullName,
         phoneNumber: data.phoneNumber,
-        // --- THÊM CÁC TRƯỜNG MỚI ---
         gender: data.gender,
         dateOfBirth: data.dateOfBirth,
-        address: data.address
+        address: data.address,
       });
 
-      alert("Đăng ký thành công!");
-      
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
+      alert('Đăng ký thành công!');
+
+      if (response.token) {
+        localStorage.setItem('token', response.token);
         navigate('/homepages');
       }
     } catch (error: any) {
-      console.error("Lỗi:", error.response?.data);
-      const serverMsg = error.response?.data;
-      alert(Array.isArray(serverMsg) ? serverMsg[0].description : serverMsg || "Lỗi kết nối!");
+      console.error('Lỗi:', error.response?.data);
+      const serverMsg = error.response?.data?.message || error.response?.data;
+      alert(typeof serverMsg === 'string' ? serverMsg : JSON.stringify(serverMsg) || 'Lỗi kết nối!');
     } finally {
       setIsLoading(false);
     }

@@ -1,11 +1,12 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MoreHorizontal, ThumbsUp, MessageSquare, Plus, Heart } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import CreatePostModal from './CreatePostModal';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
 
 const Feed = ({ stories = [], userData }: any) => {
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -207,6 +208,20 @@ const Feed = ({ stories = [], userData }: any) => {
             </div>
 
             <div className="px-4 pb-3 text-[15px] leading-relaxed text-gray-800">{post.content}</div>
+            {/* Hashtag badges */}
+            {post.postHashtags && post.postHashtags.length > 0 && (
+              <div className="px-4 pb-3 flex flex-wrap gap-1.5">
+                {post.postHashtags.map((ph: any, idx: number) => (
+                  <button
+                    key={idx}
+                    onClick={() => navigate(`/hashtags?tag=${encodeURIComponent(ph.hashtag?.name || '')}`)}
+                    className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-semibold border border-blue-100 hover:bg-blue-100 transition-colors cursor-pointer"
+                  >
+                    {ph.hashtag?.name}
+                  </button>
+                ))}
+              </div>
+            )}
             {post.imageUrl && (
               <img
                 src={`${API_BASE_URL}${post.imageUrl}`}

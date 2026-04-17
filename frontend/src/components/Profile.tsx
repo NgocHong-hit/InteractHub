@@ -2,9 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Navbar from './Navbar';
 import CreatePostModal from './CreatePostModal';
 import { 
-  Home, 
   Users, 
-  MessageCircle, 
   Plus, 
   MoreHorizontal, 
   ThumbsUp, 
@@ -16,9 +14,12 @@ import {
   Calendar,
   Camera,
   Flag,
-  Heart
+  Heart,
+  Mail,
+  Phone
 } from 'lucide-react';
-import axiosClient from '../api/axiosClient';
+import profileAPI from '../api/profileAPI';
+import type { UserProfile } from '../api/profileAPI';
 
 // --- ĐỊNH NGHĨA KIỂU DỮ LIỆU ---
 interface Post {
@@ -35,7 +36,7 @@ interface Post {
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('Tất cả');
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -56,10 +57,9 @@ const App: React.FC = () => {
   // Hàm lấy dữ liệu từ Backend
   const fetchProfile = async () => {
     try {
-      const response = await axiosClient.get('/userprofile/me');
-      console.log("Dữ liệu nhận được:", response.data);
-      console.log("KIỂM TRA DATA:", response.data); // Xem kỹ tên biến ở F12 -> Console
-      setUserProfile(response.data);
+      const response = await profileAPI.getMe();
+      console.log("Dữ liệu nhận được:", response);
+      setUserProfile(response);
     } catch (error) {
       console.error("Lỗi tải profile:", error);
     } finally {
@@ -89,7 +89,7 @@ const App: React.FC = () => {
   };
 
   // Xử lý định dạng ngày sinh chuẩn tiếng Việt
-  const formatBirthday = (dateString: string) => {
+  const formatBirthday = (dateString?: string) => {
     if (!dateString) return "Chưa cập nhật";
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return "Chưa cập nhật";
@@ -136,8 +136,11 @@ const App: React.FC = () => {
               <div className="flex-1 text-center md:text-left mb-2">
                 <h1 className="text-3xl font-bold text-gray-900">
                   {userProfile?.fullName || userProfile?.userName}
-                </h1>              
-                <p className="text-gray-500 font-semibold">839 người bạn</p>
+                </h1>
+                <p className="text-gray-500 font-semibold">{userProfile?.email || 'Chưa cập nhật email'}</p>
+                {userProfile?.bio && (
+                  <p className="text-gray-600 mt-2 leading-relaxed">{userProfile.bio}</p>
+                )}
               </div>
 
               <div className="flex gap-2 mb-4">
@@ -174,6 +177,14 @@ const App: React.FC = () => {
               <h3 className="text-xl font-bold mb-4">Giới thiệu</h3>
               <div className="space-y-4">
                 <DetailRow 
+                    icon={<Mail size={20} className="text-gray-500" />} 
+                    text={`Email: ${userProfile?.email || "Chưa cập nhật"}`} 
+                />
+                <DetailRow 
+                    icon={<Phone size={20} className="text-gray-500" />} 
+                    text={`SĐT: ${userProfile?.phoneNumber || "Chưa cập nhật"}`} 
+                />
+                <DetailRow 
                     icon={<MapPin size={20} className="text-gray-500" />} 
                     text="Sống tại " 
                     bold={userProfile?.address || "Chưa cập nhật"} 
@@ -186,12 +197,6 @@ const App: React.FC = () => {
                     icon={<Users size={20} className="text-gray-500" />} 
                     text={`Giới tính: ${userProfile?.gender || "Chưa xác định"}`} 
                 />
-                
-                {userProfile?.bio && (
-                    <div className="pt-3 italic text-gray-600 text-center border-t border-gray-100 mt-2">
-                        "{userProfile.bio}"
-                    </div>
-                )}
               </div>
             </div>
           </div>
