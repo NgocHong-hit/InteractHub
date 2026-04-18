@@ -2,25 +2,21 @@ import { useEffect, useState } from 'react';
 import { MoreHorizontal, ThumbsUp, MessageSquare, Plus, Heart } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import CreatePostModal from './CreatePostModal';
+import postsAPI from '../api/postsAPI';
+import commentsAPI from '../api/commentsAPI';
+import likesAPI from '../api/likesAPI';
+import type { Post, Comment } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
 
 const Feed = ({ stories = [], userData }: any) => {
   const navigate = useNavigate();
-  const [posts, setPosts] = useState<any[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showComments, setShowComments] = useState<Record<number, boolean>>({});
   const [commentText, setCommentText] = useState<Record<number, string>>({});
-
-  const parseResponseData = async (response: Response) => {
-    const responseText = await response.text();
-    try {
-      return responseText ? JSON.parse(responseText) : null;
-    } catch {
-      return { message: responseText || response.statusText };
-    }
-  };
+  const [comments, setComments] = useState<Record<number, Comment[]>>({});
 
   useEffect(() => {
     fetchPosts();
@@ -28,16 +24,7 @@ const Feed = ({ stories = [], userData }: any) => {
 
   const fetchPosts = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/posts`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (!response.ok) {
-        console.error('Failed to fetch posts', await response.text());
-        return;
-      }
-      const data = await response.json();
+      const data = await postsAPI.getAllPosts();
       setPosts(data);
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -52,39 +39,26 @@ const Feed = ({ stories = [], userData }: any) => {
 
   const handleLike = async (postId: number) => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('Bạn chưa đăng nhập');
-        return;
-      }
-
-      console.log('Toggling like for post:', postId);
-      const response = await fetch(`${API_BASE_URL}/api/likes/toggle`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ postId })
-      });
-
-      const responseData = await parseResponseData(response);
-      console.log('Like response:', responseData);
-
-      if (response.ok) {
-        await fetchPosts();
-      } else {
-        console.error('Failed to toggle like', responseData?.message);
-        alert(`Lỗi: ${responseData?.message || 'Không thể yêu thích bài viết'}`);
-      }
+      await likesAPI.toggleLike({ postId });
+      await fetchPosts(); // Refresh posts to update like counts
     } catch (error) {
       console.error('Error toggling like:', error);
-      alert(`Lỗi: ${error instanceof Error ? error.message : 'Không thể yêu thích bài viết'}`);
+      alert('Không thể yêu thích bài viết');
     }
   };
 
-  const toggleComments = (postId: number) => {
+  const toggleComments = async (postId: number) => {
+    const isShowing = showComments[postId];
     setShowComments(prev => ({ ...prev, [postId]: !prev[postId] }));
+
+    if (!isShowing && !comments[postId]) {
+      try {
+        const data = await commentsAPI.getCommentsByPostId(postId);
+        setComments(prev => ({ ...prev, [postId]: data }));
+      } catch (error) {
+        console.error('Error fetching comments:', error);
+      }
+    }
   };
 
   const handleCommentChange = (postId: number, value: string) => {
@@ -99,35 +73,14 @@ const Feed = ({ stories = [], userData }: any) => {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('Bạn chưa đăng nhập');
-        return;
-      }
-
-      console.log('Posting comment:', { postId, content });
-      const response = await fetch(`${API_BASE_URL}/api/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ postId, content })
-      });
-
-      const responseData = await parseResponseData(response);
-      console.log('Comment response:', responseData);
-
-      if (response.ok) {
-        setCommentText(prev => ({ ...prev, [postId]: '' }));
-        await fetchPosts();
-      } else {
-        console.error('Failed to post comment', responseData?.message);
-        alert(`Lỗi: ${responseData?.message || 'Không thể bình luận'}`);
-      }
+      await commentsAPI.createComment({ postId, content });
+      setCommentText(prev => ({ ...prev, [postId]: '' }));
+      // Refresh comments
+      const data = await commentsAPI.getCommentsByPostId(postId);
+      setComments(prev => ({ ...prev, [postId]: data }));
     } catch (error) {
       console.error('Error posting comment:', error);
-      alert(`Lỗi: ${error instanceof Error ? error.message : 'Không thể bình luận'}`);
+      alert('Không thể bình luận');
     }
   };
 
@@ -281,7 +234,7 @@ const Feed = ({ stories = [], userData }: any) => {
                 </div>
 
                 <div className="mt-3 space-y-3">
-                  {post.comments?.map((comment: any) => (
+                  {(comments[post.id] || []).map((comment: Comment) => (
                     <div key={comment.id} className="flex gap-2">
                       <img
                         src={comment.user?.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'}
@@ -290,7 +243,7 @@ const Feed = ({ stories = [], userData }: any) => {
                       />
                       <div className="flex-1">
                         <div className="bg-gray-100 px-3 py-2 rounded-2xl">
-                          <p className="font-medium text-sm">{comment.user?.fullName || comment.user?.userName || 'Người dùng'}</p>
+                          <p className="font-medium text-sm">{comment.user?.userName || 'Người dùng'}</p>
                           <p className="text-sm text-gray-800">{comment.content}</p>
                         </div>
                         <p className="text-xs text-gray-500 mt-1 ml-3">{new Date(comment.createdAt).toLocaleString('vi-VN')}</p>
