@@ -15,3 +15,20 @@ export interface Post {
   likesCount: number;
   commentsCount: number;
 }
+
+export interface Comment {
+  id: number;
+  content: string;
+  createdAt: string;
+  postId: number;
+  userId: number;
+  user: User;
+}
+
+export interface Like {
+  id: number;
+  postId: number;
+  userId: number;
+  user: User;
+  createdAt: string;
+}
