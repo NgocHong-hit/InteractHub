@@ -8,7 +8,7 @@ export interface CreatePostRequest {
 
 export interface UpdatePostRequest {
   content?: string;
-  imageUrl?: string;
+  image?: File;
 }
 
 const postsAPI = {
@@ -38,7 +38,14 @@ const postsAPI = {
   },
 
   updatePost: async (id: number, payload: UpdatePostRequest): Promise<Post> => {
-    const { data } = await axiosClient.put<Post>(`/posts/${id}`, payload);
+    const formData = new FormData();
+    if (payload.content !== undefined) {
+      formData.append('Content', payload.content);
+    }
+    if (payload.image) {
+      formData.append('Image', payload.image);
+    }
+    const { data } = await axiosClient.put<Post>(`/posts/${id}`, formData);
     return data;
   },
 

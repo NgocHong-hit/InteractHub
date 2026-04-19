@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { X, Image as ImageIcon, Globe, Hash } from 'lucide-react';
+import postsAPI from '../api/postsAPI';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
 
@@ -45,43 +46,11 @@ const CreatePostModal = ({ isOpen, onClose, userData, onPostSuccess }: any) => {
       return;
     }
 
-    const formData = new FormData();
-    formData.append('Content', data.content.trim());
-    if (selectedImage) {
-      formData.append('Image', selectedImage);
-    }
-
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('Bạn chưa đăng nhập');
-        return;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/api/posts`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        body: formData
+      const newPost = await postsAPI.createPost({
+        content: data.content.trim(),
+        image: selectedImage || undefined
       });
-
-      const responseText = await response.text();
-      let newPost: any;
-
-      try {
-        newPost = responseText ? JSON.parse(responseText) : null;
-      } catch (e) {
-        console.error('Response is not valid JSON:', responseText);
-        newPost = { message: responseText };
-      }
-
-      if (!response.ok) {
-        console.error('Failed to create post', newPost?.message || responseText);
-        alert(`Lỗi: ${newPost?.message || 'Không thể tạo bài viết'}`);
-        return;
-      }
-
       console.log('Post created successfully:', newPost);
       onPostSuccess(newPost);
       reset();

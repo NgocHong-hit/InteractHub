@@ -101,7 +101,8 @@ public class PostsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdatePost(int id, [FromBody] UpdatePostDto updatePostDto)
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UpdatePost(int id, [FromForm] UpdatePostDto updatePostDto)
     {
         var userId = ClaimsHelper.GetUserId(User);
         if (userId == null)
@@ -115,7 +116,27 @@ public class PostsController : ControllerBase
             return Forbid();
 
         existingPost.Content = updatePostDto.Content ?? existingPost.Content;
-        existingPost.ImageUrl = updatePostDto.ImageUrl ?? existingPost.ImageUrl;
+
+        if (updatePostDto.Image != null && updatePostDto.Image.Length > 0)
+        {
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            var fileName = Guid.NewGuid().ToString() + Path.GetExtension(updatePostDto.Image.FileName);
+            var filePath = Path.Combine(uploadsFolder, fileName);
+
+            try
+            {
+                await using var stream = new FileStream(filePath, FileMode.Create);
+                await updatePostDto.Image.CopyToAsync(stream);
+                existingPost.ImageUrl = $"/uploads/{fileName}";
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = $"Failed to upload image: {ex.Message}" });
+            }
+        }
 
         var updatedPost = await _postService.UpdatePostAsync(existingPost);
         return Ok(updatedPost);
@@ -152,5 +173,5 @@ public class CreatePostDto
 public class UpdatePostDto
 {
     public string? Content { get; set; }
-    public string? ImageUrl { get; set; }
+    public IFormFile? Image { get; set; }
 }
