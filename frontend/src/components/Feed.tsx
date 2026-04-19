@@ -99,12 +99,13 @@ const Feed = ({ stories = [], userData }: any) => {
     }
   };
 
-  const handleUpdatePost = async (updatedContent: string) => {
+  const handleUpdatePost = async (updatedContent: string, image?: File | null) => {
     if (!editingPost) return;
 
     try {
       await postsAPI.updatePost(editingPost.id, {
-        content: updatedContent
+        content: updatedContent,
+        image: image || undefined
       });
       await fetchPosts();
       setIsEditModalOpen(false);
@@ -324,6 +325,7 @@ const Feed = ({ stories = [], userData }: any) => {
         onClose={() => setIsEditModalOpen(false)}
         onSave={handleUpdatePost}
         initialContent={editingPost?.content || ''}
+        initialImage={editingPost?.imageUrl ? `${API_BASE_URL}${editingPost.imageUrl}` : undefined}
       />
     </main>
   );

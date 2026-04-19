@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Navbar from './Navbar';
 import CreatePostModal from './CreatePostModal';
+import PostMenu from './PostMenu';
+import EditPostModal from './EditPostModal';
 import { 
   Users, 
   Plus, 
@@ -19,40 +21,20 @@ import {
   Phone
 } from 'lucide-react';
 import profileAPI from '../api/profileAPI';
+import postsAPI from '../api/postsAPI';
 import type { UserProfile } from '../api/profileAPI';
-
-// --- ĐỊNH NGHĨA KIỂU DỮ LIỆU ---
-interface Post {
-  id: number;
-  author: string;
-  avatar: string;
-  time: string;
-  content: string;
-  image?: string;
-  likes: number;
-  comments: number;
-  liked: boolean;
-}
+import type { Post } from '../types';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('Tất cả');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Dữ liệu bài viết mẫu
-  const [posts, setPosts] = useState<Post[]>([
-    {
-      id: 1,
-      author: 'Ngọc Hồng',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Hong',
-      time: '13 tháng 6, 2022',
-      content: '“ Ngọn cỏ không chạm được vào mây, nhưng cỏ không vì vậy mà ngừng vươn lên ”',
-      likes: 152,
-      comments: 24,
-      liked: false,
-    }
-  ]);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [visiblePostMenu, setVisiblePostMenu] = useState<number | null>(null);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const menuButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
 
   // Hàm lấy dữ liệu từ Backend
   const fetchProfile = async () => {
@@ -60,6 +42,10 @@ const App: React.FC = () => {
       const response = await profileAPI.getMe();
       console.log("Dữ liệu nhận được:", response);
       setUserProfile(response);
+      // Fetch posts after getting user profile
+      if (response.id) {
+        await fetchPosts(response.id);
+      }
     } catch (error) {
       console.error("Lỗi tải profile:", error);
     } finally {
@@ -67,25 +53,60 @@ const App: React.FC = () => {
     }
   };
 
+  const fetchPosts = async (userId: number) => {
+    try {
+      const userPosts = await postsAPI.getPostsByUserId(userId);
+      setPosts(userPosts);
+    } catch (error) {
+      console.error("Lỗi tải bài viết:", error);
+    }
+  };
+
+  const handleEditPost = (postId: number) => {
+    const post = posts.find(p => p.id === postId);
+    if (post) {
+      setEditingPost(post);
+      setIsEditModalOpen(true);
+      setVisiblePostMenu(null);
+    }
+  };
+
+  const handleUpdatePost = async (updatedContent: string, image?: File | null) => {
+    if (!editingPost) return;
+
+    try {
+      await postsAPI.updatePost(editingPost.id, {
+        content: updatedContent,
+        image: image || undefined
+      });
+      await fetchPosts(userProfile!.id);
+      setIsEditModalOpen(false);
+      setEditingPost(null);
+      alert('Bài viết đã được cập nhật');
+    } catch (error) {
+      console.error('Error updating post:', error);
+      alert('Không thể cập nhật bài viết');
+    }
+  };
+
+  const handleDeletePost = async (postId: number) => {
+    try {
+      await postsAPI.deletePost(postId);
+      setPosts(prev => prev.filter(p => p.id !== postId));
+      setVisiblePostMenu(null);
+      alert('Bài viết đã được xóa');
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert('Không thể xóa bài viết');
+    }
+  };
+
   useEffect(() => {
     fetchProfile();
   }, []);
 
-  const handleNewPost = (data: any) => {
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
-    const newPost: Post = {
-      id: data.id,
-      author: userProfile?.fullName || userProfile?.userName || 'Bạn',
-      avatar: userProfile?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userProfile?.userName}`,
-      time: data.createdAt ? new Date(data.createdAt).toLocaleString('vi-VN') : 'Vừa xong',
-      content: data.content || '',
-      image: data.imageUrl ? `${API_BASE_URL}${data.imageUrl}` : undefined,
-      likes: data.likes?.length ?? 0,
-      comments: data.comments?.length ?? 0,
-      liked: false,
-    };
-
-    setPosts(prev => [newPost, ...prev]);
+  const handleNewPost = (data: Post) => {
+    setPosts(prev => [data, ...prev]);
   };
 
   // Xử lý định dạng ngày sinh chuẩn tiếng Việt
@@ -240,18 +261,30 @@ const App: React.FC = () => {
               <div key={post.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-4 flex justify-between items-start">
                   <div className="flex gap-3">
-                    <img src={post.avatar} className="w-10 h-10 rounded-full" alt="author" />
+                    <img src={post.user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.user.userName}`} className="w-10 h-10 rounded-full" alt="author" />
                     <div>
-                      <h4 className="font-bold text-[15px] hover:underline cursor-pointer">{post.author}</h4>
-                      <p className="text-[13px] text-gray-500 hover:underline cursor-pointer">{post.time} • 🌏</p>
+                      <h4 className="font-bold text-[15px] hover:underline cursor-pointer">{post.user.userName}</h4>
+                      <p className="text-[13px] text-gray-500 hover:underline cursor-pointer">{new Date(post.createdAt).toLocaleString('vi-VN')} • 🌏</p>
                     </div>
                   </div>
-                  <button className="p-2 hover:bg-gray-100 rounded-full text-gray-500"><MoreHorizontal size={20}/></button>
+                  <button 
+                    ref={el => menuButtonRefs.current[post.id] = el}
+                    onClick={() => setVisiblePostMenu(visiblePostMenu === post.id ? null : post.id)}
+                    className="p-2 hover:bg-gray-100 rounded-full text-gray-500"
+                  >
+                    <MoreHorizontal size={20}/>
+                  </button>
                 </div>
 
                 <div className="px-4 pb-3 text-[15px] leading-relaxed text-gray-900">
                   {post.content}
                 </div>
+
+                {post.imageUrl && (
+                  <div className="px-4 pb-3">
+                    <img src={`http://localhost:5012${post.imageUrl}`} alt="Post image" className="w-full rounded-lg" />
+                  </div>
+                )}
 
                 <div className="px-4 py-2.5 flex justify-between items-center text-sm text-[#65676B] border-t border-gray-50">
                   <div className="flex items-center gap-1.5 cursor-pointer">
@@ -263,10 +296,10 @@ const App: React.FC = () => {
                         <Heart size={10} className="fill-current"/>
                       </div>
                     </div>
-                    <span className="hover:underline font-medium">{post.likes}</span>
+                    <span className="hover:underline font-medium">{post.likesCount}</span>
                   </div>
                   <div className="font-medium hover:underline cursor-pointer">
-                    {post.comments} bình luận
+                    {post.commentsCount} bình luận
                   </div>
                 </div>
 
@@ -280,6 +313,24 @@ const App: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <PostMenu
+        postId={visiblePostMenu || 0}
+        isVisible={visiblePostMenu !== null}
+        buttonRef={{ current: visiblePostMenu ? menuButtonRefs.current[visiblePostMenu] : null }}
+        onEdit={handleEditPost}
+        onDelete={handleDeletePost}
+        onClose={() => setVisiblePostMenu(null)}
+        canEdit={visiblePostMenu ? posts.find(p => p.id === visiblePostMenu)?.userId === userProfile?.id : false}
+      />
+
+      <EditPostModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleUpdatePost}
+        initialContent={editingPost?.content || ''}
+        initialImage={editingPost?.imageUrl ? `http://localhost:5012${editingPost.imageUrl}` : undefined}
+      />
     </div>
   );
 };

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Image as ImageIcon } from 'lucide-react';
 
 interface EditPostModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (content: string) => void;
+  onSave: (content: string, image?: File | null) => void;
   initialContent: string;
+  initialImage?: string;
   isLoading?: boolean;
 }
 
@@ -14,19 +15,43 @@ const EditPostModal: React.FC<EditPostModalProps> = ({
   onClose,
   onSave,
   initialContent,
+  initialImage,
   isLoading = false,
 }) => {
   const [content, setContent] = useState(initialContent);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(initialImage || null);
+  const [removeImage, setRemoveImage] = useState(false);
 
   useEffect(() => {
     setContent(initialContent);
-  }, [initialContent]);
+    setImagePreview(initialImage || null);
+    setSelectedImage(null);
+    setRemoveImage(false);
+  }, [initialContent, initialImage]);
 
   if (!isOpen) return null;
 
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setSelectedImage(file);
+    setRemoveImage(false);
+    const reader = new FileReader();
+    reader.onload = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    setRemoveImage(true);
+  };
+
   const handleSubmit = () => {
     if (content.trim()) {
-      onSave(content.trim());
+      const imageToSend = removeImage ? null : selectedImage;
+      onSave(content.trim(), imageToSend);
     }
   };
 
@@ -49,6 +74,31 @@ const EditPostModal: React.FC<EditPostModalProps> = ({
             placeholder="Nội dung bài viết..."
             className="w-full min-h-[200px] rounded-3xl border border-slate-200 px-4 py-3 text-sm outline-none resize-none focus:border-blue-500"
           />
+
+          {imagePreview && (
+            <div className="relative">
+              <img src={imagePreview} alt="Preview" className="w-full rounded-lg" />
+              <button
+                onClick={handleRemoveImage}
+                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
+              <ImageIcon size={20} className="text-green-600" />
+              <span className="text-sm font-medium">Ảnh</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+            </label>
+          </div>
 
           <div className="flex gap-3 justify-end">
             <button
