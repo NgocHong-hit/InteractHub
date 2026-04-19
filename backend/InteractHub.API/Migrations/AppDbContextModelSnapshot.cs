@@ -143,10 +143,19 @@ namespace InteractHub.API.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("SenderId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SenderId");
 
                     b.HasIndex("UserId");
 
@@ -237,6 +246,9 @@ namespace InteractHub.API.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -552,11 +564,17 @@ namespace InteractHub.API.Migrations
 
             modelBuilder.Entity("InteractHub.API.Models.Notification", b =>
                 {
+                    b.HasOne("InteractHub.API.Models.User", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId");
+
                     b.HasOne("InteractHub.API.Models.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Sender");
 
                     b.Navigation("User");
                 });

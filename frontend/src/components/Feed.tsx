@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { MoreHorizontal, ThumbsUp, MessageSquare, Plus, Heart } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import CreatePostModal from './CreatePostModal';
+import EditPostModal from './EditPostModal';
+import PostMenu from './PostMenu';
 import postsAPI from '../api/postsAPI';
 import commentsAPI from '../api/commentsAPI';
 import likesAPI from '../api/likesAPI';
@@ -17,6 +19,10 @@ const Feed = ({ stories = [], userData }: any) => {
   const [showComments, setShowComments] = useState<Record<number, boolean>>({});
   const [commentText, setCommentText] = useState<Record<number, string>>({});
   const [comments, setComments] = useState<Record<number, Comment[]>>({});
+  const [visiblePostMenu, setVisiblePostMenu] = useState<number | null>(null);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const menuButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
 
   useEffect(() => {
     fetchPosts();
@@ -81,6 +87,43 @@ const Feed = ({ stories = [], userData }: any) => {
     } catch (error) {
       console.error('Error posting comment:', error);
       alert('Không thể bình luận');
+    }
+  };
+
+  const handleEditPost = (postId: number) => {
+    const post = posts.find(p => p.id === postId);
+    if (post) {
+      setEditingPost(post);
+      setIsEditModalOpen(true);
+      setVisiblePostMenu(null);
+    }
+  };
+
+  const handleUpdatePost = async (updatedContent: string) => {
+    if (!editingPost) return;
+
+    try {
+      await postsAPI.updatePost(editingPost.id, {
+        content: updatedContent
+      });
+      await fetchPosts();
+      setIsEditModalOpen(false);
+      setEditingPost(null);
+      alert('Bài viết đã được cập nhật');
+    } catch (error) {
+      console.error('Error updating post:', error);
+      alert('Không thể cập nhật bài viết');
+    }
+  };
+
+  const handleDeletePost = async (postId: number) => {
+    try {
+      await postsAPI.deletePost(postId);
+      setPosts(prev => prev.filter(p => p.id !== postId));
+      alert('Bài viết đã được xóa');
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert('Không thể xóa bài viết');
     }
   };
 
@@ -157,7 +200,26 @@ const Feed = ({ stories = [], userData }: any) => {
                   <span className="text-[11px] text-gray-500 font-medium">{new Date(post.createdAt).toLocaleString('vi-VN')} • 🌏</span>
                 </div>
               </div>
-              <MoreHorizontal className="text-gray-400 cursor-pointer hover:bg-gray-100 rounded-full" size={18} />
+              <div className="relative">
+                <button
+                  ref={(el) => {
+                    if (el) menuButtonRefs.current[post.id] = el;
+                  }}
+                  onClick={() => setVisiblePostMenu(visiblePostMenu === post.id ? null : post.id)}
+                  className="text-gray-400 cursor-pointer hover:bg-gray-100 rounded-full p-2 transition-colors"
+                >
+                  <MoreHorizontal size={18} />
+                </button>
+                <PostMenu
+                  postId={post.id}
+                  isVisible={visiblePostMenu === post.id}
+                  onClose={() => setVisiblePostMenu(null)}
+                  onEdit={handleEditPost}
+                  onDelete={handleDeletePost}
+                  canEdit={post.userId === userData?.id}
+                  buttonRef={{ current: menuButtonRefs.current[post.id] || null }}
+                />
+              </div>
             </div>
 
             <div className="px-4 pb-3 text-[15px] leading-relaxed text-gray-800">{post.content}</div>
@@ -256,6 +318,13 @@ const Feed = ({ stories = [], userData }: any) => {
           </div>
         ))}
       </div>
+
+      <EditPostModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleUpdatePost}
+        initialContent={editingPost?.content || ''}
+      />
     </main>
   );
 };

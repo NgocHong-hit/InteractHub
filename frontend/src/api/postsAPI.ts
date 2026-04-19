@@ -29,15 +29,11 @@ const postsAPI = {
 
   createPost: async (payload: CreatePostRequest): Promise<Post> => {
     const formData = new FormData();
-    formData.append('content', payload.content);
+    formData.append('Content', payload.content);
     if (payload.image) {
-      formData.append('image', payload.image);
+      formData.append('Image', payload.image);
     }
-    const { data } = await axiosClient.post<Post>('/posts', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const { data } = await axiosClient.post<Post>('/posts', formData);
     return data;
   },
 
