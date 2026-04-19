@@ -1,10 +1,24 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import Feed from '../components/Feed';
 import RightPanel from '../components/RightPanel';
 import Navbar from './Navbar';
 
 const Homepages = () => {
+  const [userData, setUserData] = useState<any>(null);
+
+  useEffect(() => {
+    // Load userData from localStorage
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setUserData(JSON.parse(storedUser));
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+      }
+    }
+  }, []);
+
   // Mock Data giữ nguyên
   const stories = [
     { id: 1, name: 'Hoàng Nam', thumb: 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?w=200' },
@@ -31,7 +45,7 @@ const Homepages = () => {
           <Sidebar /> 
           
           <div className="flex-1 min-w-0">
-            <Feed posts={posts} stories={stories} />
+            <Feed posts={posts} stories={stories} userData={userData} />
           </div>
 
           <RightPanel contacts={contacts} />

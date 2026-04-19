@@ -11,7 +11,11 @@ export interface Post {
   content: string;
   imageUrl?: string;
   createdAt: string;
+  userId?: number;
   user: User;
+  likes?: Like[];
+  comments?: Comment[];
+  postHashtags?: Array<{ hashtag: { name: string } }>;
   likesCount: number;
   commentsCount: number;
 }
