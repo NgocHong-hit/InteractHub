@@ -29,10 +29,6 @@ const Sidebar = () => {
     <aside className="hidden lg:block w-[280px] sticky top-20 h-fit space-y-1">
       {/* Thêm đường dẫn 'to' cho mỗi mục */}
       <SidebarItem icon={<Home size={20}/>} label="Bảng tin" to="/homepages" />
-      <SidebarItem icon={<Users size={20}/>} label="Bạn bè" to="/friends" />
-      <SidebarItem icon={<MessageSquare size={20}/>} label="Nhóm" to="/groups" />
-      <SidebarItem icon={<Video size={20}/>} label="Video" to="/videos" />
-      <SidebarItem icon={<Bookmark size={20}/>} label="Đã lưu" to="/saved" />
       {/* Nút hashtag dẫn đến trang /hashtags */}
       <SidebarItem 
         icon={<TrendingUpIcon size={20}/>} 

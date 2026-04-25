@@ -1,4 +1,5 @@
 using InteractHub.API.DTOs.Account;
+using Microsoft.AspNetCore.Identity;
 
 namespace InteractHub.API.Interfaces
 {
@@ -6,5 +7,5 @@ namespace InteractHub.API.Interfaces
     {
         Task<object> RegisterAsync(RegisterDto registerDto);
         Task<object> LoginAsync(LoginDto loginDto);
-    }
+        Task<IdentityResult> ChangePasswordAsync(string userId, ChangePasswordDto changePasswordDto);    }
 }

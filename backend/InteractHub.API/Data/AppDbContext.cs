@@ -44,19 +44,25 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<int>, int>
         .HasForeignKey(l => l.UserId)
         .OnDelete(DeleteBehavior.Restrict); // Đổi từ Cascade sang Restrict
 
-    // 3. Cấu hình Friendship (Bạn đã làm, hãy giữ nguyên)
+    // 3. Cấu hình Friendship
+    modelBuilder.Entity<Friendship>()
+        .HasKey(f => f.Id);
+
     modelBuilder.Entity<Friendship>()
         .HasOne(f => f.User1)
-        .WithMany(u => u.Friendships1)
+        .WithMany(u => u.SentFriendRequests)
         .HasForeignKey(f => f.UserId1)
         .OnDelete(DeleteBehavior.Restrict);
 
     modelBuilder.Entity<Friendship>()
         .HasOne(f => f.User2)
-        .WithMany(u => u.Friendships2)
+        .WithMany(u => u.ReceivedFriendRequests)
         .HasForeignKey(f => f.UserId2)
         .OnDelete(DeleteBehavior.Restrict);
-
+    modelBuilder.Entity<Friendship>()
+        .Property(f => f.Status)
+        .HasConversion<string>();
+        
     // Tạo sẵn 2 quyền trong DB
    modelBuilder.Entity<IdentityRole<int>>().HasData(
         new IdentityRole<int> 

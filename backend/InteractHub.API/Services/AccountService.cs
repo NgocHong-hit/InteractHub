@@ -75,5 +75,19 @@ namespace InteractHub.API.Services
                 token = _tokenService.CreateToken(user, roles) 
             };
         }
+
+        public async Task<IdentityResult> ChangePasswordAsync(string userId, ChangePasswordDto dto)
+            {
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    return IdentityResult.Failed(new IdentityError { Description = "Người dùng không tồn tại." });
+                }
+
+                // Trả về kết quả trực tiếp từ hàm của Identity
+                // Hàm này trả về IdentityResult, khớp hoàn toàn với Interface
+                var result = await _userManager.ChangePasswordAsync(user, dto.OldPassword, dto.NewPassword);
+                return result;
+            }
     }
 }

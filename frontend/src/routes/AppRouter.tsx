@@ -15,21 +15,21 @@ import CreateStory from '../components/CreateStory';
 const AppRouter = () => {
   return (
     <Routes>
-      {/* --- NHÓM 1: PUBLIC ROUTES (Ai cũng xem được) --- */}
+      {/* --- NHÓM 1: PUBLIC ROUTES --- */}
+      {/* Khi vào "/" sẽ tự động chuyển hướng sang "/login" */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* --- NHÓM 2: PROTECTED ROUTES (Phải đăng nhập mới vào được) --- */}
+      {/* --- NHÓM 2: PROTECTED ROUTES --- */}
       <Route element={<ProtectedRoute />}>
-        <Route path="/" element={<Navigate to="/homepages" replace />} />
+        {/* Bỏ dòng chuyển hướng "/" ở trong này đi */}
         <Route path="/homepages" element={<HomePages />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/friends" element={<Friends />} />
         <Route path="/hashtags" element={<TrendingHashtags />} />
         <Route path="/create-story" element={<CreateStory />} />
-        
-        {/* Route dành riêng cho Admin (Có thể check thêm role ở đây) */}
         <Route path="/admin" element={<AdminDashboard />} />
       </Route>
 
@@ -38,5 +38,4 @@ const AppRouter = () => {
     </Routes>
   );
 };
-
 export default AppRouter;

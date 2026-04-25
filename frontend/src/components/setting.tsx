@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'; // ĐÃ NHÚNG: Thêm useEffect
 import Navbar from './Navbar';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users,
   Plus,
@@ -11,15 +12,12 @@ import {
   Calendar,
   User,
   Lock,
-  Shield,
   LogOut,
   ChevronRight,
   Settings,
-  BellRing,
-  Palette,
-  HelpCircle
 } from 'lucide-react';
 import profileAPI from '../api/profileAPI';
+import accountAPI from '../api/accountAPI';
 import type { UserProfile } from '../api/profileAPI';
 
 // --- ĐỊNH NGHĨA KIỂU DỮ LIỆU ---
@@ -44,6 +42,7 @@ interface SettingsCategory {
 }
 
 const App: React.FC = () => {
+  const navigate = useNavigate();
   const [view, setView] = useState<'home' | 'profile' | 'settings'>('settings'); 
   const [activeTab, setActiveTab] = useState('Tất cả');
   const [activeSettingsCategory, setActiveSettingsCategory] = useState('account');
@@ -54,6 +53,14 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  // --- Password change states ---
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordChangeStatus, setPasswordChangeStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [passwordErrorMessage, setPasswordErrorMessage] = useState('');
 
   // --- ĐÃ NHÚNG: Hàm lấy dữ liệu và format ngày sinh ---
   const fetchProfile = async () => {
@@ -106,6 +113,8 @@ const App: React.FC = () => {
     }
   };
 
+
+
   useEffect(() => {
     fetchProfile();
   }, []);
@@ -125,10 +134,6 @@ const App: React.FC = () => {
   const settingsCategories: SettingsCategory[] = [
     { id: 'account', label: 'Thông tin cá nhân', icon: <User size={20} />, description: 'Quản lý tên, email và thông tin cơ bản.' },
     { id: 'security', label: 'Mật khẩu và bảo mật', icon: <Lock size={20} />, description: 'Thay đổi mật khẩu và bảo vệ tài khoản.' },
-    { id: 'privacy', label: 'Quyền riêng tư', icon: <Shield size={20} />, description: 'Kiểm soát ai có thể xem hoạt động của bạn.' },
-    { id: 'notifications', label: 'Thông báo', icon: <BellRing size={20} />, description: 'Tùy chỉnh thông báo đẩy và email.' },
-    { id: 'display', label: 'Hiển thị & Ngôn ngữ', icon: <Palette size={20} />, description: 'Giao diện sáng/tối và ngôn ngữ sử dụng.' },
-    { id: 'support', label: 'Hỗ trợ & Trợ giúp', icon: <HelpCircle size={20} />, description: 'Báo cáo sự cố hoặc tìm trợ giúp.' },
   ];
 
   const [posts] = useState<Post[]>([
@@ -143,6 +148,31 @@ const App: React.FC = () => {
       liked: false,
     }
   ]);
+
+  // setting.tsx
+  const handleChangePassword = async () => {
+    // Kiểm tra khớp mật khẩu ngay tại Frontend để đỡ tốn tài nguyên server
+    if (newPassword !== confirmNewPassword) {
+      alert("Mật khẩu mới và xác nhận không khớp!");
+      return;
+    }
+
+    try {
+      await accountAPI.changePassword({
+        currentPassword,
+        newPassword,
+        confirmNewPassword,
+      });
+      alert("Đổi mật khẩu thành công");
+      // Reset form
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (error) {
+      console.error('Lỗi đổi mật khẩu:', error);
+      alert("Đã có lỗi xảy ra, vui lòng thử lại.");
+    }
+  };
 
   // Màn hình chờ khi đang kết nối DB
   if (loading) return <div className="flex h-screen items-center justify-center bg-white font-bold text-blue-600 animate-pulse">InteractHub...</div>;
@@ -177,12 +207,15 @@ const App: React.FC = () => {
                 </div>
                 <hr className="border-gray-100" />
                 <div className="p-2">
-                  {/* Nút quay lại Profile */}
-                  <button onClick={() => setView('profile')} className="w-full flex items-center gap-4 px-4 py-3 text-left text-gray-600 hover:bg-gray-100 rounded-lg font-bold text-[15px] mb-1">
-                    <User size={20} /><span>Trang cá nhân</span>
-                  </button>
-                  <button className="w-full flex items-center gap-4 px-4 py-3 text-left text-red-500 hover:bg-red-50 transition-all rounded-lg font-bold text-[15px]">
-                    <LogOut size={20} /><span>Đăng xuất</span>
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem('authToken');
+                      navigate('/login');
+                    }}
+                    className="w-full flex items-center gap-4 px-5 py-3.5 text-left transition-all hover:bg-red-50 text-red-500 rounded-lg font-bold"
+                  >
+                    <LogOut size={20} />
+                    <span>Đăng xuất</span>
                   </button>
                 </div>
               </div>
@@ -302,8 +335,78 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   )}
-                  {/* ... các danh mục settings khác giữ nguyên ... */}
-                  {activeSettingsCategory !== 'account' && (
+                  {activeSettingsCategory === 'security' && (
+                    <div className="space-y-8">
+                      <div className="grid gap-4">
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Mật khẩu hiện tại</label>
+                          <input
+                            type="password"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            placeholder="Nhập mật khẩu hiện tại"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Mật khẩu mới</label>
+                          <input
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            placeholder="Nhập mật khẩu mới"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Xác nhận mật khẩu mới</label>
+                          <input
+                            type="password"
+                            value={confirmNewPassword}
+                            onChange={(e) => setConfirmNewPassword(e.target.value)}
+                            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            placeholder="Nhập lại mật khẩu mới"
+                          />
+                        </div>
+                      </div>
+
+                      {passwordChangeStatus === 'success' && (
+                        <div className="rounded-xl bg-green-50 border border-green-200 p-3 text-sm text-green-700">Đổi mật khẩu thành công.</div>
+                      )}
+                      {passwordChangeStatus === 'error' && (
+                        <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                          {passwordErrorMessage || 'Không thể đổi mật khẩu, vui lòng thử lại.'}
+                        </div>
+                      )}
+
+                      <div className="pt-4 flex flex-wrap justify-end gap-3">
+                        <button
+                          onClick={() => {
+                            setCurrentPassword('');
+                            setNewPassword('');
+                            setConfirmNewPassword('');
+                            setPasswordChangeStatus('idle');
+                            setPasswordErrorMessage('');
+                          }}
+                          type="button"
+                          className="px-6 py-2 rounded-lg font-bold text-gray-600 hover:bg-gray-100 transition-colors"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          onClick={handleChangePassword}
+                          type="button"
+                          disabled={isChangingPassword || !currentPassword || !newPassword || !confirmNewPassword}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-bold shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isChangingPassword ? 'Đang đổi...' : 'Đổi mật khẩu'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {activeSettingsCategory !== 'account' && activeSettingsCategory !== 'security' && (
                     <div className="flex flex-col items-center justify-center py-20 text-center">
                       <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
                         <Settings size={40} className="text-gray-300 animate-spin-slow" />

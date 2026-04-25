@@ -10,5 +10,6 @@ namespace InteractHub.API.Interfaces
         Task<ServiceResult> DeleteStoryAsync(int userId, int storyId);
         Task<List<StoryDto>> GetFriendsStoriesAsync(int userId);
         Task<List<StoryDto>> GetMyActiveStoriesAsync(int userId);
+        Task<List<StoryDto>> GetAllActiveStoriesAsync();
     }
 }

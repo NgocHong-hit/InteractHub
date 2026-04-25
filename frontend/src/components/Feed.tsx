@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
-import { MoreHorizontal, ThumbsUp, MessageSquare, Plus, Heart } from 'lucide-react';
+import { MoreHorizontal, ThumbsUp, MessageSquare, Plus, Heart, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import Stories from 'react-insta-stories';
 import CreatePostModal from './CreatePostModal';
 import EditPostModal from './EditPostModal';
 import PostMenu from './PostMenu';
@@ -23,10 +24,67 @@ const Feed = ({ stories = [], userData }: any) => {
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const menuButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  
+  // --- States mới cho chức năng xem Story ---
+  const [isStoryModalOpen, setIsStoryModalOpen] = useState(false);
+  const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
+  
+  // --- THÊM DÒNG NÀY ĐỂ LỌC TRÙNG ---
+  const uniqueStories = stories.filter((story: any, index: number, self: any[]) =>
+    index === self.findIndex((s) => s.id === story.id)
+  );
 
   useEffect(() => {
     fetchPosts();
   }, []);
+
+  const formattedStories = uniqueStories.map((s: any) => {
+  return {
+    content: (props: any) => (
+      <div className="relative w-full h-full flex flex-col items-center justify-center bg-black overflow-hidden">
+        
+        {/* --- 1. TỰ VẼ HEADER Ở GÓC TRÁI --- */}
+        <div className="absolute top-8 left-4 flex items-center gap-3 z-[1001] w-full px-4">
+          <img 
+            src={s.user?.avatarUrl || s.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${s.name}`} 
+            className="w-10 h-10 rounded-full border-2 border-white shadow-md object-cover" 
+            alt="avatar" 
+          />
+          <div className="flex flex-col">
+            <span className="text-white text-[15px] font-bold drop-shadow-md">
+              {s.user?.fullName || s.name || 'Người dùng'}
+            </span>
+            <span className="text-white/80 text-[11px] drop-shadow-sm">Tin tạm thời</span>
+          </div>
+        </div>
+
+        {/* --- 2. NỀN STORY --- */}
+        {(s.mediaUrl || s.thumb) ? (
+          <img src={s.mediaUrl || s.thumb} className="w-full h-full object-cover" alt="story" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500" />
+        )}
+
+        {/* Lớp phủ tối */}
+        <div className="absolute inset-0 bg-black/20" />
+
+        {/* --- 3. NỘI DUNG CHỮ --- */}
+        {s.content && (
+          <div className="absolute inset-0 flex items-center justify-center p-8">
+            <p className="text-white text-2xl font-bold text-center drop-shadow-lg whitespace-pre-wrap">
+              {s.content}
+            </p>
+          </div>
+        )}
+      </div>
+    ),
+  };
+});
+
+  const handleOpenStory = (index: number) => {
+    setSelectedStoryIndex(index);
+    setIsStoryModalOpen(true);
+  };
 
   const fetchPosts = async () => {
     try {
@@ -136,6 +194,7 @@ const Feed = ({ stories = [], userData }: any) => {
 
   return (
     <main className="flex-1 flex flex-col gap-5 max-w-[600px] mx-auto py-4 px-2">
+      {/* --- PHẦN STORY BAR --- */}
       <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
         <Link to="/create-story" className="flex-shrink-0 no-underline">
           <div className="relative w-28 h-48 rounded-xl overflow-hidden cursor-pointer group bg-white border border-gray-200 shadow-sm transition-all hover:bg-gray-50">
@@ -155,18 +214,77 @@ const Feed = ({ stories = [], userData }: any) => {
           </div>
         </Link>
 
-        {stories.map((story: any) => (
-          <div key={story.id} className="relative w-28 h-48 flex-shrink-0 rounded-xl overflow-hidden cursor-pointer group shadow-sm border border-gray-200">
-            <img src={story.thumb} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt="" />
+        {uniqueStories.map((story: any, index: number) => (
+          <div 
+            // SỬA KEY Ở ĐÂY: Kết hợp ID và Index để đảm bảo duy nhất tuyệt đối
+            key={`story-${story.id}-${index}`} 
+            onClick={() => handleOpenStory(index)} 
+            className="relative w-28 h-48 flex-shrink-0 rounded-xl overflow-hidden cursor-pointer group shadow-sm border border-gray-200"
+          >
+            <img 
+              src={story.thumb || 'https://images.unsplash.com/photo-1557683316-973673baf926?w=200'} 
+              className="w-full h-full object-cover transition-transform group-hover:scale-110" 
+              alt="story" 
+            />
+            
+            {/* Hiển thị nội dung chữ trên Thumbnail story */}
+            {story.content && (
+              <div className="absolute inset-0 flex items-center justify-center p-2 bg-black/10">
+                <p className="text-white text-[10px] font-bold text-center line-clamp-4 drop-shadow-md">
+                  {story.content}
+                </p>
+              </div>
+            )}
+
             <div className="absolute top-2 left-2 p-0.5 bg-[#0866FF] rounded-full border-2 border-white z-10">
-              <img src={story.avatar} className="w-7 h-7 rounded-full" alt="" />
+              <img 
+                src={story.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${story.name}`} 
+                className="w-7 h-7 rounded-full object-cover" 
+                alt="avatar" 
+              />
             </div>
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
-            <span className="absolute bottom-2 left-2 right-2 text-[11px] font-bold text-white truncate">{story.name}</span>
+            <span className="absolute bottom-2 left-2 right-2 text-[11px] font-bold text-white truncate">
+              {story.name || 'Người dùng'}
+            </span>
           </div>
         ))}
       </div>
 
+      {/* --- MODAL XEM STORY CHI TIẾT --- */}
+      {isStoryModalOpen && formattedStories.length > 0 && (
+        <div className="fixed inset-0 bg-black/95 z-[999] flex items-center justify-center">
+          <button 
+            onClick={() => setIsStoryModalOpen(false)}
+            className="absolute top-6 right-6 text-white p-2 z-[1000]"
+          >
+            <X size={32} />
+          </button>
+          
+          <div className="relative shadow-2xl rounded-xl overflow-hidden">
+            {/* Cách render này sẽ tránh lỗi Element type is invalid */}
+            {(() => {
+              // @ts-ignore
+              const StoryComponent = Stories.default || Stories; 
+              if (typeof StoryComponent !== 'function' && typeof StoryComponent !== 'object') {
+                return <div className="text-white">Lỗi nạp thư viện</div>;
+              }
+              return (
+                <StoryComponent
+                  stories={formattedStories}
+                  defaultInterval={5000}
+                  width={380}
+                  height={675}
+                  currentIndex={selectedStoryIndex}
+                  onAllStoriesEnd={() => setIsStoryModalOpen(false)}
+                />
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* --- CÁC PHẦN DƯỚI ĐÂY GIỮ NGUYÊN 100% --- */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mt-2">
         <div className="flex gap-3 mb-4">
           <img src={userData?.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'} className="w-10 h-10 rounded-full object-cover" alt="" />

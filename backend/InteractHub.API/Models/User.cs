@@ -24,7 +24,10 @@ namespace InteractHub.API.Models
         public virtual ICollection<Like> Likes { get; set; } = new List<Like>();
         
         // Quan hệ bạn bè thường chia làm 2 phía: người gửi và người nhận
-        public virtual ICollection<Friendship> Friendships1 { get; set; } = new List<Friendship>();
-        public virtual ICollection<Friendship> Friendships2 { get; set; } = new List<Friendship>();
+        [JsonIgnore]
+        public virtual ICollection<Friendship> SentFriendRequests { get; set; } = new List<Friendship>();
+        
+        [JsonIgnore]
+        public virtual ICollection<Friendship> ReceivedFriendRequests { get; set; } = new List<Friendship>();
     }
 }
