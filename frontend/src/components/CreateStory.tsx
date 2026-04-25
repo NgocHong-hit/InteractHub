@@ -1,12 +1,17 @@
 import React, { useState, useRef } from 'react';
 import { X, Settings, ChevronLeft, Type, Palette, Plus, Send, Globe, ChevronDown, Image as ImageIcon } from 'lucide-react';
 import { Rnd } from 'react-rnd'; // Thư viện kéo thả & resize
+import { useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
+import storyAPI from '../api/storyAPI';
 
 const CreateStory = ({ userData = {}, setView }: any) => {
+  const navigate = useNavigate();
   const [text, setText] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [bgGradient, setBgGradient] = useState("from-purple-500 to-pink-500");
+  const [isSharing, setIsSharing] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const gradients = [
@@ -22,9 +27,72 @@ const CreateStory = ({ userData = {}, setView }: any) => {
     }
   };
 
+  const handleShare = async () => {
+    if (!text && !selectedImage) {
+      alert("Vui lòng thêm văn bản hoặc hình ảnh trước khi chia sẻ!");
+      return; 
+    }
+
+    setIsSharing(true);
+    try {
+      // Tạo object để gửi dữ liệu
+      const storyData: any = {
+        content: text || undefined,
+        mediaUrl: undefined,
+      };
+
+      // Nếu có hình ảnh, sử dụng URL object (tạm thời)
+      // Trong thực tế, nên upload lên server trước rồi lấy URL
+      if (selectedImage) {
+        // Hiện tại chỉ gửi blob URL, backend có thể xử lý hoặc cập nhật sau
+        storyData.mediaUrl = selectedImage;
+      }
+
+      console.log("Sending story data:", storyData);
+      
+      // Gọi API tạo story
+      const response = await storyAPI.createStory(storyData);
+      console.log("Story created successfully:", response);
+      
+      // Hiển thị thông báo thành công
+      setShowSuccessMessage(true);
+      
+      // Reset form
+      setText("");
+      setSelectedImage(null);
+      
+      // Tự động redirect sau 2 giây
+      setTimeout(() => {
+        navigate('/homepages');
+      }, 2000);
+    } catch (error) {
+      console.error("Lỗi chia sẻ tin:", error);
+      alert("Không thể chia sẻ tin, vui lòng thử lại.");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   return (
     <div className="h-screen w-full bg-[#F0F2F5] flex flex-col font-sans overflow-hidden">
       <Navbar />
+
+      {/* Success Notification Modal */}
+      {showSuccessMessage && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="absolute inset-0 bg-black/30" />
+          <div className="relative bg-white rounded-2xl shadow-2xl p-8 max-w-md text-center animate-in fade-in scale-in duration-300">
+            <div className="w-16 h-16 bg-green-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+              <div className="text-3xl">✓</div>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Thành công!</h3>
+            <p className="text-gray-600 mb-6">Tin của bạn đã được chia sẻ thành công. Bạn sẽ quay về trang chủ trong giây lát...</p>
+            <div className="flex justify-center">
+              <div className="inline-block text-blue-600 font-bold">Đang tải...</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 flex overflow-hidden">
         {/* SIDEBAR BÊN TRÁI */}
@@ -75,8 +143,10 @@ const CreateStory = ({ userData = {}, setView }: any) => {
           </div>
 
           <div className="p-4 border-t bg-white flex gap-2">
-            <button onClick={() => {setText(""); setSelectedImage(null)}} className="flex-1 py-3 text-sm font-bold text-gray-500">Hủy</button>
-            <button onClick={() => setView('home')} className="flex-[2] py-3 bg-[#0866FF] text-white font-bold rounded-xl text-sm">Chia sẻ</button>
+            <button onClick={() => navigate('/')} className="flex-1 py-3 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-lg transition-all">Hủy</button>
+            <button onClick={handleShare} disabled={isSharing} className="flex-[2] py-3 bg-[#0866FF] hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold rounded-xl text-sm transition-all">
+              {isSharing ? 'Đang chia sẻ...' : 'Chia sẻ'}
+            </button>
           </div>
         </aside>
 

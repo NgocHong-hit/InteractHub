@@ -33,7 +33,11 @@ const postsAPI = {
     if (payload.image) {
       formData.append('Image', payload.image);
     }
-    const { data } = await axiosClient.post<Post>('/posts', formData);
+    const { data } = await axiosClient.post<Post>('/posts', formData, {
+      headers: {
+        'Content-Type': undefined,
+      },
+    });
     return data;
   },
 

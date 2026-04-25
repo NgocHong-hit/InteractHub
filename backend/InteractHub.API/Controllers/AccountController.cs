@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using InteractHub.API.DTOs.Account;
 using InteractHub.API.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace InteractHub.API.Controllers
 {
@@ -33,13 +34,38 @@ namespace InteractHub.API.Controllers
             return Ok(result);
         }
 
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto model)
+        {
+            // Validate model state
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors);
+                return BadRequest(errors.Select(e => new { message = e.ErrorMessage }));
+            }
+
+            // Lấy UserId từ Claims trong Token
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var result = await _accountService.ChangePasswordAsync(userId, model);
+
+            if (result.Succeeded)
+            {
+                return Ok(new { message = "Đổi mật khẩu thành công " });
+            }
+
+            // Nếu lỗi (mật khẩu cũ sai, hoặc mật khẩu mới không đủ mạnh)
+            return BadRequest(result.Errors);
+        }
+
         [HttpGet("admin-only")]
         [Authorize(Roles = "Admin")]
         public IActionResult GetAdminDashboard()
         {
             return Ok("Chào sếp Admin!");
         }
-            }
-
-    
+    }
 }

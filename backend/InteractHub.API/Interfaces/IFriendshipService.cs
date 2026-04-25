@@ -1,5 +1,4 @@
-// Interfaces/IFriendshipService.cs
-using InteractHub.API.Helpers;
+using InteractHub.API.Common;
 using InteractHub.API.DTOs.Responses;
 
 namespace InteractHub.API.Interfaces

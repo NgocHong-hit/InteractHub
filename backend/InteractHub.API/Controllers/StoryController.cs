@@ -42,6 +42,14 @@ namespace InteractHub.API.Controllers
             return Ok(stories);
         }
 
+        [HttpGet("all-active")]
+        public async Task<ActionResult<List<StoryDto>>> GetAllActiveStories()
+        {
+            // Lấy tất cả Story chưa hết hạn của mọi User
+            var stories = await _storyService.GetAllActiveStoriesAsync(); 
+            return Ok(stories);
+        }
+        
         // Lấy Story của chính mình
         [HttpGet("my")]
         public async Task<ActionResult<List<StoryDto>>> GetMyStories()
