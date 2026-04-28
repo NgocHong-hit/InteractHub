@@ -42,7 +42,7 @@ namespace InteractHub.API.Controllers
             return int.Parse(userIdClaim.Value);
         }
 
-        // GET: api/friendship/all-users - Lấy tất cả user ngoài current user
+        // GET: api/friendship/all-users - Lấy tất cả user ngoài current user, kèm trạng thái kết bạn
         [HttpGet("all-users")]
         public async Task<IActionResult> GetAllUsers()
         {
@@ -63,7 +63,44 @@ namespace InteractHub.API.Controllers
                     })
                     .ToListAsync();
 
-                return Ok(new { success = true, data = users });
+                // Lấy tất cả friendship liên quan đến current user
+                var myFriendships = await _context.Friendships
+                    .Where(f => f.UserId1 == currentUserId || f.UserId2 == currentUserId)
+                    .ToListAsync();
+
+                var result = users.Select(u =>
+                {
+                    var friendship = myFriendships.FirstOrDefault(f =>
+                        (f.UserId1 == currentUserId && f.UserId2 == u.Id) ||
+                        (f.UserId1 == u.Id && f.UserId2 == currentUserId));
+
+                    string friendshipStatus = "none";
+                    int? friendshipId = null;
+
+                    if (friendship != null)
+                    {
+                        friendshipId = friendship.Id;
+                        if (friendship.Status == FriendshipStatus.Accepted)
+                            friendshipStatus = "friends";
+                        else if (friendship.Status == FriendshipStatus.Pending && friendship.UserId1 == currentUserId)
+                            friendshipStatus = "sent";    // Mình đã gửi cho người này
+                        else if (friendship.Status == FriendshipStatus.Pending && friendship.UserId2 == currentUserId)
+                            friendshipStatus = "received"; // Người này đã gửi cho mình
+                    }
+
+                    return new
+                    {
+                        u.Id,
+                        u.UserName,
+                        u.FullName,
+                        u.AvatarUrl,
+                        u.Bio,
+                        FriendshipStatus = friendshipStatus,
+                        FriendshipId = friendshipId
+                    };
+                });
+
+                return Ok(new { success = true, data = result });
             }
             catch (Exception ex)
             {
@@ -127,7 +164,7 @@ namespace InteractHub.API.Controllers
             {
                 var currentUserId = GetCurrentUserId();
                 var result = await _friendshipService.SendFriendRequestAsync(currentUserId, dto.ReceiverId);
-                return Ok(result);
+                return Ok(new { success = result.IsSuccess, message = result.Message });
             }
             catch (Exception ex)
             {
@@ -143,7 +180,7 @@ namespace InteractHub.API.Controllers
             {
                 var currentUserId = GetCurrentUserId();
                 var result = await _friendshipService.AcceptFriendRequestAsync(currentUserId, dto.FriendshipId);
-                return Ok(result);
+                return Ok(new { success = result.IsSuccess, message = result.Message });
             }
             catch (Exception ex)
             {
@@ -159,7 +196,7 @@ namespace InteractHub.API.Controllers
             {
                 var currentUserId = GetCurrentUserId();
                 var result = await _friendshipService.RejectFriendRequestAsync(currentUserId, dto.FriendshipId);
-                return Ok(result);
+                return Ok(new { success = result.IsSuccess, message = result.Message });
             }
             catch (Exception ex)
             {
@@ -167,7 +204,7 @@ namespace InteractHub.API.Controllers
             }
         }
 
-        // DELETE: api/friendship/remove - Xóa bạn bè hoặc hủy lời mời
+        // DELETE: api/friendship/remove/{friendId} - Xóa bạn bè hoặc hủy lời mời
         [HttpDelete("remove/{friendId}")]
         public async Task<IActionResult> RemoveFriend(int friendId)
         {
@@ -175,7 +212,7 @@ namespace InteractHub.API.Controllers
             {
                 var currentUserId = GetCurrentUserId();
                 var result = await _friendshipService.RemoveFriendAsync(currentUserId, friendId);
-                return Ok(result);
+                return Ok(new { success = result.IsSuccess, message = result.Message });
             }
             catch (Exception ex)
             {
@@ -193,9 +230,17 @@ namespace InteractHub.API.Controllers
                 var friendship = await _friendshipRepository.GetFriendshipBetweenAsync(currentUserId, userId);
 
                 if (friendship == null)
-                    return Ok(new { success = true, status = "none" });
+                    return Ok(new { success = true, status = "none", friendshipId = (int?)null });
 
-                return Ok(new { success = true, status = friendship.Status.ToString(), friendshipId = friendship.Id });
+                string status = "none";
+                if (friendship.Status == FriendshipStatus.Accepted)
+                    status = "friends";
+                else if (friendship.Status == FriendshipStatus.Pending && friendship.UserId1 == currentUserId)
+                    status = "sent";
+                else if (friendship.Status == FriendshipStatus.Pending && friendship.UserId2 == currentUserId)
+                    status = "received";
+
+                return Ok(new { success = true, status, friendshipId = friendship.Id });
             }
             catch (Exception ex)
             {
