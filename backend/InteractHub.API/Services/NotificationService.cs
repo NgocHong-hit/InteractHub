@@ -24,6 +24,10 @@ namespace InteractHub.API.Services
 
         public async Task CreateAndSendNotificationAsync(int receiverId, int? senderId, string type, string message)
         {
+            // Không gửi thông báo cho chính mình
+            if (senderId.HasValue && senderId.Value == receiverId)
+                return;
+
             var notification = new Notification
             {
                 UserId = receiverId,
@@ -37,20 +41,35 @@ namespace InteractHub.API.Services
             _context.Notifications.Add(notification);
             await _context.SaveChangesAsync();
 
+            // Load sender info để gửi đầy đủ qua SignalR
+            string senderUserName = string.Empty;
+            string? senderAvatarUrl = null;
+            if (senderId.HasValue)
+            {
+                var sender = await _context.Users.FindAsync(senderId.Value);
+                if (sender != null)
+                {
+                    senderUserName = sender.UserName ?? string.Empty;
+                    senderAvatarUrl = sender.AvatarUrl;
+                }
+            }
+
             // Gửi realtime qua SignalR
             var notificationDto = new NotificationDto
             {
                 Id = notification.Id,
                 UserId = notification.UserId,
                 SenderId = notification.SenderId,
+                SenderUserName = senderUserName,
+                SenderAvatarUrl = senderAvatarUrl,
                 Type = notification.Type,
                 Message = notification.Message,
                 IsRead = notification.IsRead,
                 CreatedAt = notification.CreatedAt
             };
 
-            // Gửi đến user cụ thể
-            await _hubContext.Clients.User(receiverId.ToString())
+            // Gửi đến group theo UserId (khớp với RegisterUser trong NotificationHub)
+            await _hubContext.Clients.Group(receiverId.ToString())
                 .SendAsync("ReceiveNotification", notificationDto);
         }
 

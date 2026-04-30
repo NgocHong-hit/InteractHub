@@ -62,6 +62,19 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<int>, int>
     modelBuilder.Entity<Friendship>()
         .Property(f => f.Status)
         .HasConversion<string>();
+
+    // 4. Cấu hình Notification — tránh lỗi cascade path
+    modelBuilder.Entity<Notification>()
+        .HasOne(n => n.User)
+        .WithMany()
+        .HasForeignKey(n => n.UserId)
+        .OnDelete(DeleteBehavior.Restrict);
+
+    modelBuilder.Entity<Notification>()
+        .HasOne(n => n.Sender)
+        .WithMany()
+        .HasForeignKey(n => n.SenderId)
+        .OnDelete(DeleteBehavior.Restrict);
         
     // Tạo sẵn 2 quyền trong DB
    modelBuilder.Entity<IdentityRole<int>>().HasData(

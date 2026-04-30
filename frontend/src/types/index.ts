@@ -36,3 +36,15 @@ export interface Like {
   user: User;
   createdAt: string;
 }
+
+export interface Notification {
+  id: number;
+  userId: number;
+  senderId?: number;
+  senderUserName: string;
+  senderAvatarUrl?: string;
+  type: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}

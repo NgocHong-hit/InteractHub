@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Home, Users, MessageCircle, Bell, Search, 
-  ThumbsUp, MessageSquare, UserPlus, Image as ImageIcon, MoreHorizontal 
+  ThumbsUp, MessageSquare, UserPlus, UserCheck, Heart
 } from 'lucide-react';
+import * as signalR from '@microsoft/signalr';
+import notificationAPI from '../api/notificationAPI';
+import type { NotificationData } from '../api/notificationAPI';
 
 // Component con cho các icon điều hướng giữa màn hình (Có thêm Label Tooltip)
 const NavMainIcon = ({ icon, active, to, label }: any) => (
@@ -30,17 +33,145 @@ const NavMainIcon = ({ icon, active, to, label }: any) => (
   </Link>
 );
 
+// Hàm tính thời gian tương đối
+const getRelativeTime = (dateString: string): string => {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffSec < 60) return 'Vừa xong';
+  if (diffMin < 60) return `${diffMin} phút trước`;
+  if (diffHour < 24) return `${diffHour} giờ trước`;
+  if (diffDay < 7) return `${diffDay} ngày trước`;
+  return date.toLocaleDateString('vi-VN');
+};
+
+// Hàm lấy icon theo loại thông báo
+const getNotificationIcon = (type: string) => {
+  switch (type) {
+    case 'Like':
+      return (
+        <div className="absolute bottom-0 right-0 p-1 bg-blue-600 rounded-full border-2 border-white">
+          <ThumbsUp size={8} className="text-white fill-current" />
+        </div>
+      );
+    case 'Comment':
+      return (
+        <div className="absolute bottom-0 right-0 p-1 bg-green-500 rounded-full border-2 border-white">
+          <MessageSquare size={8} className="text-white fill-current" />
+        </div>
+      );
+    case 'FriendRequest':
+      return (
+        <div className="absolute bottom-0 right-0 p-1 bg-purple-500 rounded-full border-2 border-white">
+          <UserPlus size={8} className="text-white fill-current" />
+        </div>
+      );
+    case 'FriendAccepted':
+      return (
+        <div className="absolute bottom-0 right-0 p-1 bg-emerald-500 rounded-full border-2 border-white">
+          <UserCheck size={8} className="text-white fill-current" />
+        </div>
+      );
+    default:
+      return (
+        <div className="absolute bottom-0 right-0 p-1 bg-gray-500 rounded-full border-2 border-white">
+          <Bell size={8} className="text-white fill-current" />
+        </div>
+      );
+  }
+};
+
 const Navbar = ({ userData }: any) => {
   const location = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationData[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const connectionRef = useRef<signalR.HubConnection | null>(null);
 
-  // Mock dữ liệu thông báo
-  const [notifications, setNotifications] = useState([
-    { id: 1, type: 'like', user: { name: 'Hoàng Nam', avatar: 'https://i.pravatar.cc/150?u=1' }, content: 'đã thích bài viết của bạn.', time: '2 phút trước', isRead: false },
-    { id: 2, type: 'comment', user: { name: 'Minh Hằng', avatar: 'https://i.pravatar.cc/150?u=2' }, content: 'đã bình luận về ảnh của bạn.', time: '1 giờ trước', isRead: false },
-  ]);
+  // Fetch thông báo từ API
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const data = await notificationAPI.getNotifications();
+      setNotifications(data);
+      const count = await notificationAPI.getUnreadCount();
+      setUnreadCount(count);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  // Kết nối SignalR
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    // Fetch lần đầu
+    fetchNotifications();
+
+    // Tạo SignalR connection
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl('http://localhost:5012/notificationHub', {
+        accessTokenFactory: () => token,
+      })
+      .withAutomaticReconnect()
+      .configureLogging(signalR.LogLevel.Warning)
+      .build();
+
+    connection.on('ReceiveNotification', (notification: NotificationData) => {
+      // Thêm thông báo mới vào đầu danh sách
+      setNotifications(prev => [notification, ...prev]);
+      setUnreadCount(prev => prev + 1);
+    });
+
+    connection.start()
+      .then(() => {
+        console.log('SignalR connected');
+        // Đăng ký user vào group
+        connection.invoke('RegisterUser').catch(err => 
+          console.error('Error registering user:', err)
+        );
+      })
+      .catch(err => console.error('SignalR connection error:', err));
+
+    connectionRef.current = connection;
+
+    return () => {
+      connection.stop();
+    };
+  }, []);
+
+  // Đánh dấu 1 thông báo đã đọc
+  const handleMarkAsRead = async (id: number) => {
+    try {
+      await notificationAPI.markAsRead(id);
+      setNotifications(prev =>
+        prev.map(n => n.id === id ? { ...n, isRead: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  // Đánh dấu tất cả đã đọc
+  const handleMarkAllAsRead = async () => {
+    try {
+      await notificationAPI.markAllAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
+  };
 
   return (
     <nav className="fixed top-0 w-full h-14 bg-white border-b border-gray-200 z-[100] flex items-center justify-between px-4 shadow-sm">
@@ -91,14 +222,20 @@ const Navbar = ({ userData }: any) => {
         {/* Nút Thông báo (Có Dropdown) */}
         <div className="relative">
           <button 
-            onClick={() => setShowNotifications(!showNotifications)}
+            onClick={() => {
+              setShowNotifications(!showNotifications);
+              // Refresh khi mở dropdown
+              if (!showNotifications) {
+                fetchNotifications();
+              }
+            }}
             className={`p-2.5 rounded-full transition-all relative active:scale-95 
               ${showNotifications ? 'bg-blue-50 text-blue-600' : 'bg-[#E4E6EB] hover:bg-[#D8DADF] text-black'}`}
           >
             <Bell size={20} />
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-[#E41E3F] text-white text-[11px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">
-                {unreadCount}
+                {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
           </button>
@@ -111,33 +248,58 @@ const Navbar = ({ userData }: any) => {
               <div className="absolute top-12 right-0 w-[360px] bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden animate-in slide-in-from-top-2 duration-200 z-[200]">
                 <div className="p-4 border-b border-gray-100 flex justify-between items-center">
                   <h3 className="text-xl font-bold text-gray-900">Thông báo</h3>
-                  <button className="text-blue-600 text-sm font-semibold hover:bg-blue-50 px-2 py-1 rounded">Xem tất cả</button>
+                  <button 
+                    onClick={handleMarkAllAsRead}
+                    className="text-blue-600 text-sm font-semibold hover:bg-blue-50 px-2 py-1 rounded"
+                  >
+                    Đánh dấu tất cả đã đọc
+                  </button>
                 </div>
                 
                 <div className="max-h-[450px] overflow-y-auto">
-                  <div className="space-y-1 py-2">
-                    {notifications.map((notif) => (
-                      <div 
-                        key={notif.id} 
-                        className={`flex items-start gap-3 p-3 mx-2 rounded-lg cursor-pointer hover:bg-gray-50 relative group ${!notif.isRead ? 'bg-blue-50/50' : ''}`}
-                        onClick={() => {
-                          setNotifications(notifications.map(n => n.id === notif.id ? {...n, isRead: true} : n));
-                        }}
-                      >
-                        <div className="relative flex-shrink-0">
-                          <img src={notif.user.avatar} className="w-12 h-12 rounded-full object-cover" alt="avt" />
-                          <div className="absolute bottom-0 right-0 p-1 bg-blue-600 rounded-full border-2 border-white">
-                            <ThumbsUp size={8} className="text-white fill-current" />
+                  {loading && notifications.length === 0 ? (
+                    <div className="flex items-center justify-center py-8 text-gray-400 text-sm">
+                      Đang tải thông báo...
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                      <Bell size={40} className="mb-3 text-gray-300" />
+                      <p className="text-sm font-medium">Chưa có thông báo nào</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1 py-2">
+                      {notifications.map((notif) => (
+                        <div 
+                          key={notif.id} 
+                          className={`flex items-start gap-3 p-3 mx-2 rounded-lg cursor-pointer hover:bg-gray-50 relative group transition-colors ${!notif.isRead ? 'bg-blue-50/50' : ''}`}
+                          onClick={() => {
+                            if (!notif.isRead) {
+                              handleMarkAsRead(notif.id);
+                            }
+                          }}
+                        >
+                          <div className="relative flex-shrink-0">
+                            <img 
+                              src={notif.senderAvatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${notif.senderUserName || 'user'}`} 
+                              className="w-12 h-12 rounded-full object-cover" 
+                              alt="avatar" 
+                            />
+                            {getNotificationIcon(notif.type)}
                           </div>
+                          <div className="flex-1 text-sm">
+                            <p className="text-gray-800">
+                              <span className="font-bold">{notif.senderUserName || 'Ai đó'}</span>{' '}
+                              {notif.message}
+                            </p>
+                            <p className={`text-xs font-semibold mt-1 ${!notif.isRead ? 'text-blue-600' : 'text-gray-400'}`}>
+                              {getRelativeTime(notif.createdAt)}
+                            </p>
+                          </div>
+                          {!notif.isRead && <div className="w-3 h-3 bg-blue-600 rounded-full self-center flex-shrink-0"></div>}
                         </div>
-                        <div className="flex-1 text-sm">
-                          <p className="text-gray-800"><span className="font-bold">{notif.user.name}</span> {notif.content}</p>
-                          <p className="text-blue-600 text-xs font-semibold mt-1">{notif.time}</p>
-                        </div>
-                        {!notif.isRead && <div className="w-3 h-3 bg-blue-600 rounded-full self-center"></div>}
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </>
