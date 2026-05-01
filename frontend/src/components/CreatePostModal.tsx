@@ -51,13 +51,11 @@ const CreatePostModal = ({ isOpen, onClose, userData, onPostSuccess }: any) => {
         content: data.content.trim(),
         image: selectedImage || undefined
       });
-      console.log('Post created successfully:', newPost);
       onPostSuccess(newPost);
       reset();
       removeImage();
       onClose();
     } catch (error) {
-      console.error('Error creating post:', error);
       alert(`Lỗi: ${error instanceof Error ? error.message : 'Không thể tạo bài viết'}`);
     }
   };
@@ -65,7 +63,7 @@ const CreatePostModal = ({ isOpen, onClose, userData, onPostSuccess }: any) => {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/30" onClick={onClose}></div>
-      <div className="relative bg-white w-full max-w-[520px] rounded-3xl shadow-2xl border border-gray-200 overflow-hidden">
+      <div className="relative bg-white w-full max-w-[520px] max-h-[90vh] rounded-3xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div />
           <h3 className="text-lg font-semibold">Tạo bài viết</h3>
@@ -74,7 +72,8 @@ const CreatePostModal = ({ isOpen, onClose, userData, onPostSuccess }: any) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <div className="flex gap-3 items-center">
             <img src={userData?.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'} alt="avatar" className="w-12 h-12 rounded-full object-cover" />
             <div>
@@ -115,7 +114,7 @@ const CreatePostModal = ({ isOpen, onClose, userData, onPostSuccess }: any) => {
 
           {imagePreview && (
             <div className="relative">
-              <img src={imagePreview} alt="preview" className="w-full max-h-[360px] rounded-3xl object-cover" />
+              <img src={imagePreview} alt="preview" className="w-full max-h-[260px] rounded-3xl object-cover" />
               <button
                 type="button"
                 onClick={removeImage}
@@ -134,14 +133,17 @@ const CreatePostModal = ({ isOpen, onClose, userData, onPostSuccess }: any) => {
               <input type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
             </label>
           </div>
+          </div>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-3xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:bg-slate-400"
-          >
-            {isSubmitting ? 'Đang đăng...' : 'Đăng'}
-          </button>
+          <div className="p-4 pt-2 border-t border-gray-100 flex-shrink-0">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full rounded-3xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:bg-slate-400"
+            >
+              {isSubmitting ? 'Đang đăng...' : 'Đăng'}
+            </button>
+          </div>
         </form>
       </div>
     </div>

@@ -30,7 +30,6 @@ const App: React.FC = () => {
     } catch (error: any) {
       const serverMessage = error.response?.data?.message || error.response?.data || 'Đăng nhập thất bại. Vui lòng thử lại.';
       setErrorMessage(typeof serverMessage === 'string' ? serverMessage : JSON.stringify(serverMessage));
-      console.error('Lỗi đăng nhập:', error.response?.data || error);
     }
   };
 

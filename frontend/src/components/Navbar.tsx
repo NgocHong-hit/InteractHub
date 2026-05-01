@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, Users, MessageCircle, Bell, Search, 
   ThumbsUp, MessageSquare, UserPlus, UserCheck, Heart
@@ -7,6 +7,13 @@ import {
 import * as signalR from '@microsoft/signalr';
 import notificationAPI from '../api/notificationAPI';
 import type { NotificationData } from '../api/notificationAPI';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
+
+const getAvatarUrl = (url?: string, seed?: string) => {
+  if (url) return url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed || 'user'}`;
+};
 
 // Component con cho các icon điều hướng giữa màn hình (Có thêm Label Tooltip)
 const NavMainIcon = ({ icon, active, to, label }: any) => (
@@ -88,11 +95,21 @@ const getNotificationIcon = (type: string) => {
 
 const Navbar = ({ userData }: any) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const connectionRef = useRef<signalR.HubConnection | null>(null);
+
+  // Get current user data for profile avatar
+  const storedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+  let persistedUser = null;
+  if (storedUser) {
+    try { persistedUser = JSON.parse(storedUser); } catch { /* ignore malformed data */ }
+  }
+  const currentUser = userData || persistedUser;
+  const profileAvatar = getAvatarUrl(currentUser?.avatarUrl, currentUser?.userName || 'User');
 
   // Fetch thông báo từ API
   const fetchNotifications = async () => {
@@ -102,8 +119,8 @@ const Navbar = ({ userData }: any) => {
       setNotifications(data);
       const count = await notificationAPI.getUnreadCount();
       setUnreadCount(count);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
+    } catch {
+      // Silently handle - notifications will just show empty
     } finally {
       setLoading(false);
     }
@@ -123,7 +140,7 @@ const Navbar = ({ userData }: any) => {
         accessTokenFactory: () => token,
       })
       .withAutomaticReconnect()
-      .configureLogging(signalR.LogLevel.Warning)
+      .configureLogging(signalR.LogLevel.None)
       .build();
 
     connection.on('ReceiveNotification', (notification: NotificationData) => {
@@ -134,13 +151,10 @@ const Navbar = ({ userData }: any) => {
 
     connection.start()
       .then(() => {
-        console.log('SignalR connected');
         // Đăng ký user vào group
-        connection.invoke('RegisterUser').catch(err => 
-          console.error('Error registering user:', err)
-        );
+        connection.invoke('RegisterUser').catch(() => {});
       })
-      .catch(err => console.error('SignalR connection error:', err));
+      .catch(() => {});
 
     connectionRef.current = connection;
 
@@ -157,8 +171,8 @@ const Navbar = ({ userData }: any) => {
         prev.map(n => n.id === id ? { ...n, isRead: true } : n)
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
+    } catch {
+      // Silently handle
     }
   };
 
@@ -168,8 +182,20 @@ const Navbar = ({ userData }: any) => {
       await notificationAPI.markAllAsRead();
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
-    } catch (error) {
-      console.error('Error marking all as read:', error);
+    } catch {
+      // Silently handle
+    }
+  };
+
+  // Navigate to notification sender's profile
+  const handleNotificationClick = (notif: NotificationData) => {
+    if (!notif.isRead) {
+      handleMarkAsRead(notif.id);
+    }
+    setShowNotifications(false);
+    // Navigate to the sender's profile
+    if (notif.senderId) {
+      navigate(`/profile/${notif.senderId}`);
     }
   };
 
@@ -272,15 +298,11 @@ const Navbar = ({ userData }: any) => {
                         <div 
                           key={notif.id} 
                           className={`flex items-start gap-3 p-3 mx-2 rounded-lg cursor-pointer hover:bg-gray-50 relative group transition-colors ${!notif.isRead ? 'bg-blue-50/50' : ''}`}
-                          onClick={() => {
-                            if (!notif.isRead) {
-                              handleMarkAsRead(notif.id);
-                            }
-                          }}
+                          onClick={() => handleNotificationClick(notif)}
                         >
                           <div className="relative flex-shrink-0">
                             <img 
-                              src={notif.senderAvatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${notif.senderUserName || 'user'}`} 
+                              src={getAvatarUrl(notif.senderAvatarUrl, notif.senderUserName || 'user')} 
                               className="w-12 h-12 rounded-full object-cover" 
                               alt="avatar" 
                             />
@@ -288,7 +310,7 @@ const Navbar = ({ userData }: any) => {
                           </div>
                           <div className="flex-1 text-sm">
                             <p className="text-gray-800">
-                              <span className="font-bold">{notif.senderUserName || 'Ai đó'}</span>{' '}
+                              <span className="font-bold hover:underline">{notif.senderUserName || 'Ai đó'}</span>{' '}
                               {notif.message}
                             </p>
                             <p className={`text-xs font-semibold mt-1 ${!notif.isRead ? 'text-blue-600' : 'text-gray-400'}`}>
@@ -306,7 +328,21 @@ const Navbar = ({ userData }: any) => {
           )}
         </div>
 
-       
+        {/* Nút Profile Avatar */}
+        <Link 
+          to="/profile"
+          className="relative group"
+        >
+          <img 
+            src={profileAvatar} 
+            className="w-10 h-10 rounded-full object-cover border-2 border-transparent hover:border-blue-500 transition-all cursor-pointer" 
+            alt="My Profile" 
+          />
+          {/* Tooltip */}
+          <div className="absolute top-[110%] left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[60]">
+            Trang cá nhân
+          </div>
+        </Link>
 
       </div>
     </nav>

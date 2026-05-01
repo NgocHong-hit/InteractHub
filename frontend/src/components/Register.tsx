@@ -33,7 +33,6 @@ const Register: React.FC = () => {
         navigate('/homepages');
       }
     } catch (error: any) {
-      console.error('Lỗi:', error.response?.data);
       const serverMsg = error.response?.data?.message || error.response?.data;
       alert(typeof serverMsg === 'string' ? serverMsg : JSON.stringify(serverMsg) || 'Lỗi kết nối!');
     } finally {

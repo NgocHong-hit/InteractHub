@@ -1,7 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { MoreHorizontal, ThumbsUp, MessageSquare, Plus, Heart, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import Stories from 'react-insta-stories';
+import StoriesImport from 'react-insta-stories';
+// Handle CJS/ESM interop - react-insta-stories may export differently
+const Stories = (StoriesImport as any).default || StoriesImport;
 import CreatePostModal from './CreatePostModal';
 import EditPostModal from './EditPostModal';
 import PostMenu from './PostMenu';
@@ -11,6 +13,11 @@ import likesAPI from '../api/likesAPI';
 import type { Post, Comment } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
+
+const getAvatarUrl = (url?: string, seed?: string) => {
+  if (url) return url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed || 'user'}`;
+};
 
 const Feed = ({ stories = [], userData }: any) => {
   const navigate = useNavigate();
@@ -46,7 +53,7 @@ const Feed = ({ stories = [], userData }: any) => {
         {/* --- 1. TỰ VẼ HEADER Ở GÓC TRÁI --- */}
         <div className="absolute top-8 left-4 flex items-center gap-3 z-[1001] w-full px-4">
           <img 
-            src={s.user?.avatarUrl || s.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${s.name}`} 
+            src={getAvatarUrl(s.user?.avatarUrl || s.avatar, s.name)} 
             className="w-10 h-10 rounded-full border-2 border-white shadow-md object-cover" 
             alt="avatar" 
           />
@@ -90,8 +97,7 @@ const Feed = ({ stories = [], userData }: any) => {
     try {
       const data = await postsAPI.getAllPosts();
       setPosts(data);
-    } catch (error) {
-      console.error('Error fetching posts:', error);
+    } catch {
     } finally {
       setLoading(false);
     }
@@ -105,9 +111,7 @@ const Feed = ({ stories = [], userData }: any) => {
     try {
       await likesAPI.toggleLike({ postId });
       await fetchPosts(); // Refresh posts to update like counts
-    } catch (error) {
-      console.error('Error toggling like:', error);
-      alert('Không thể yêu thích bài viết');
+    } catch {
     }
   };
 
@@ -119,8 +123,7 @@ const Feed = ({ stories = [], userData }: any) => {
       try {
         const data = await commentsAPI.getCommentsByPostId(postId);
         setComments(prev => ({ ...prev, [postId]: data }));
-      } catch (error) {
-        console.error('Error fetching comments:', error);
+      } catch {
       }
     }
   };
@@ -142,9 +145,7 @@ const Feed = ({ stories = [], userData }: any) => {
       // Refresh comments
       const data = await commentsAPI.getCommentsByPostId(postId);
       setComments(prev => ({ ...prev, [postId]: data }));
-    } catch (error) {
-      console.error('Error posting comment:', error);
-      alert('Không thể bình luận');
+    } catch {
     }
   };
 
@@ -169,9 +170,7 @@ const Feed = ({ stories = [], userData }: any) => {
       setIsEditModalOpen(false);
       setEditingPost(null);
       alert('Bài viết đã được cập nhật');
-    } catch (error) {
-      console.error('Error updating post:', error);
-      alert('Không thể cập nhật bài viết');
+    } catch {
     }
   };
 
@@ -180,9 +179,7 @@ const Feed = ({ stories = [], userData }: any) => {
       await postsAPI.deletePost(postId);
       setPosts(prev => prev.filter(p => p.id !== postId));
       alert('Bài viết đã được xóa');
-    } catch (error) {
-      console.error('Error deleting post:', error);
-      alert('Không thể xóa bài viết');
+    } catch {
     }
   };
 
@@ -200,7 +197,7 @@ const Feed = ({ stories = [], userData }: any) => {
           <div className="relative w-28 h-48 rounded-xl overflow-hidden cursor-pointer group bg-white border border-gray-200 shadow-sm transition-all hover:bg-gray-50">
             <div className="h-[70%] overflow-hidden bg-gray-100">
               <img
-                src={userData?.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'}
+                src={getAvatarUrl(userData?.avatarUrl, userData?.userName || 'User')}
                 className="w-full h-full object-cover transition-transform group-hover:scale-105"
                 alt="Tạo tin"
               />
@@ -262,24 +259,18 @@ const Feed = ({ stories = [], userData }: any) => {
           </button>
           
           <div className="relative shadow-2xl rounded-xl overflow-hidden">
-            {/* Cách render này sẽ tránh lỗi Element type is invalid */}
-            {(() => {
-              // @ts-ignore
-              const StoryComponent = Stories.default || Stories; 
-              if (typeof StoryComponent !== 'function' && typeof StoryComponent !== 'object') {
-                return <div className="text-white">Lỗi nạp thư viện</div>;
-              }
-              return (
-                <StoryComponent
-                  stories={formattedStories}
-                  defaultInterval={5000}
-                  width={380}
-                  height={675}
-                  currentIndex={selectedStoryIndex}
-                  onAllStoriesEnd={() => setIsStoryModalOpen(false)}
-                />
-              );
-            })()}
+            {typeof Stories === 'function' || typeof Stories === 'object' ? (
+              <Stories
+                stories={formattedStories}
+                defaultInterval={5000}
+                width={380}
+                height={675}
+                currentIndex={selectedStoryIndex}
+                onAllStoriesEnd={() => setIsStoryModalOpen(false)}
+              />
+            ) : (
+              <div className="text-white p-4">Lỗi nạp thư viện</div>
+            )}
           </div>
         </div>
       )}
@@ -287,7 +278,7 @@ const Feed = ({ stories = [], userData }: any) => {
       {/* --- CÁC PHẦN DƯỚI ĐÂY GIỮ NGUYÊN 100% --- */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mt-2">
         <div className="flex gap-3 mb-4">
-          <img src={userData?.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'} className="w-10 h-10 rounded-full object-cover" alt="" />
+          <img src={getAvatarUrl(userData?.avatarUrl, userData?.userName || 'User')} className="w-10 h-10 rounded-full object-cover" alt="" />
           <button
             onClick={() => setIsModalOpen(true)}
             className="w-full bg-[#F0F2F5] hover:bg-gray-200 text-gray-500 text-left px-4 py-2.5 rounded-full text-[15px] transition-colors"
@@ -310,12 +301,13 @@ const Feed = ({ stories = [], userData }: any) => {
             <div className="p-4 flex justify-between items-start">
               <div className="flex gap-3">
                 <img
-                  src={post.user?.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'}
-                  className="w-10 h-10 rounded-full border border-gray-100 object-cover"
+                  src={getAvatarUrl(post.user?.avatarUrl, post.user?.userName || 'User')}
+                  className="w-10 h-10 rounded-full border border-gray-100 object-cover cursor-pointer"
                   alt=""
+                  onClick={() => navigate(`/profile/${post.userId}`)}
                 />
                 <div>
-                  <h4 className="font-bold text-sm hover:underline cursor-pointer">{post.user?.fullName || post.user?.userName || displayName}</h4>
+                  <h4 className="font-bold text-sm hover:underline cursor-pointer" onClick={() => navigate(`/profile/${post.userId}`)}>{post.user?.fullName || post.user?.userName || displayName}</h4>
                   <span className="text-[11px] text-gray-500 font-medium">{new Date(post.createdAt).toLocaleString('vi-VN')} • 🌏</span>
                 </div>
               </div>
@@ -390,7 +382,7 @@ const Feed = ({ stories = [], userData }: any) => {
             {showComments[post.id] && (
               <div className="px-4 pb-4 border-t border-gray-100">
                 <div className="flex gap-2 mt-3">
-                  <img src={userData?.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'} className="w-8 h-8 rounded-full object-cover" alt="" />
+                  <img src={getAvatarUrl(userData?.avatarUrl, userData?.userName || 'User')} className="w-8 h-8 rounded-full object-cover" alt="" />
                   <div className="flex-1 flex gap-2">
                     <input
                       type="text"
@@ -418,13 +410,14 @@ const Feed = ({ stories = [], userData }: any) => {
                   {(comments[post.id] || []).map((comment: Comment) => (
                     <div key={comment.id} className="flex gap-2">
                       <img
-                        src={comment.user?.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'}
-                        className="w-8 h-8 rounded-full object-cover"
+                        src={getAvatarUrl(comment.user?.avatarUrl, comment.user?.userName || 'User')}
+                        className="w-8 h-8 rounded-full object-cover cursor-pointer"
                         alt=""
+                        onClick={() => navigate(`/profile/${comment.userId}`)}
                       />
                       <div className="flex-1">
                         <div className="bg-gray-100 px-3 py-2 rounded-2xl">
-                          <p className="font-medium text-sm">{comment.user?.userName || 'Người dùng'}</p>
+                          <p className="font-medium text-sm hover:underline cursor-pointer" onClick={() => navigate(`/profile/${comment.userId}`)}>{comment.user?.fullName || comment.user?.userName || 'Người dùng'}</p>
                           <p className="text-sm text-gray-800">{comment.content}</p>
                         </div>
                         <p className="text-xs text-gray-500 mt-1 ml-3">{new Date(comment.createdAt).toLocaleString('vi-VN')}</p>

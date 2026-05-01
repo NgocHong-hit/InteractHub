@@ -28,26 +28,14 @@ const storyAPI = {
 
   // GET api/stories/friends
   getFriendsStories: async (): Promise<StoryResponse[]> => {
-    try {
-      const response = await axiosClient.get('/stories/friends');
-      console.log('Fetched friend stories response:', response.data);
-      return response.data || [];
-    } catch (error) {
-      console.error('Error in getFriendsStories:', error);
-      throw error;
-    }
+    const response = await axiosClient.get('/stories/friends');
+    return response.data || [];
   },
 
   // GET api/stories/my
   getMyStories: async (): Promise<StoryResponse[]> => {
-    try {
-      const response = await axiosClient.get('/stories/my');
-      console.log('Fetched my stories response:', response.data);
-      return response.data || [];
-    } catch (error) {
-      console.error('Error in getMyStories:', error);
-      throw error;
-    }
+    const response = await axiosClient.get('/stories/my');
+    return response.data || [];
   },
 
   // DELETE api/stories/{id}

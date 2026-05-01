@@ -18,8 +18,7 @@ const Homepages = () => {
     if (storedUser) {
       try {
         setUserData(JSON.parse(storedUser));
-      } catch (error) {
-        console.error('Error parsing stored user:', error);
+      } catch {
       }
     }
     
@@ -31,17 +30,14 @@ const Homepages = () => {
     try {
       setLoadingStories(true);
       // Fetch cả stories của bạn bè và stories của chính mình
-      const friendStories = await storyAPI.getFriendsStories();
-      const myStories = await storyAPI.getMyStories();
-      
-      console.log('Friend stories:', friendStories);
-      console.log('My stories:', myStories);
+      const [friendStories, myStories] = await Promise.all([
+        storyAPI.getFriendsStories().catch(() => []),
+        storyAPI.getMyStories().catch(() => []),
+      ]);
       
       // Kiểm tra dữ liệu và convert thành array nếu cần
       const friendStoriesArray = Array.isArray(friendStories) ? friendStories : [];
       const myStoriesArray = Array.isArray(myStories) ? myStories : [];
-      
-      console.log('Stories to display:', [...myStoriesArray, ...friendStoriesArray]);
       
       // Kết hợp stories và chuyển đổi format
       const allStories = [...myStoriesArray, ...friendStoriesArray].map((story: any) => ({
@@ -56,10 +52,8 @@ const Homepages = () => {
         userId: story.userId,
       }));
       
-      console.log('Formatted stories:', allStories);
       setStories(allStories);
-    } catch (error) {
-      console.error('Error fetching stories:', error);
+    } catch {
       setStories([]);
     } finally {
       setLoadingStories(false);
@@ -93,7 +87,7 @@ const Homepages = () => {
             )}
           </div>
 
-          <RightPanel contacts={contacts} />
+          <RightPanel contacts={contacts} userData={userData} />
         </div>
       </div>
     </div>

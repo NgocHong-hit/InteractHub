@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom'; // Import Link và useLocation
-import { Home, Users, MessageSquare, Video, Bookmark, Settings, LogOut, TrendingDownIcon, TrendingUpIcon } from 'lucide-react';
+import { Home, Settings, LogOut, TrendingUpIcon } from 'lucide-react';
 
 // Sửa SidebarItem để dùng Link
 const SidebarItem = ({ icon, label, to, colorClass = "" }: any) => {

@@ -48,20 +48,10 @@ const accountAPI = {
       confirmPassword: payload.confirmNewPassword
     };
     
-    console.log('Sending change password request:', formattedData);
-    
     try {
       const { data } = await axiosClient.post('/account/change-password', formattedData);
-      console.log('Change password response:', data);
       return data;
     } catch (error: any) {
-      console.error('Change password error status:', error.response?.status);
-      console.error('Change password error data:', JSON.stringify(error.response?.data, null, 2));
-      if (Array.isArray(error.response?.data)) {
-        error.response.data.forEach((err: any, index: number) => {
-          console.error(`Error ${index}:`, err);
-        });
-      }
       throw error;
     }
   },    

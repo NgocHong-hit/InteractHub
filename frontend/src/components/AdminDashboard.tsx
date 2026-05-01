@@ -23,7 +23,6 @@ const AdminDashboard: React.FC = () => {
         const data = await adminAPI.getStatistics();
         setStats(data);
       } catch (err: any) {
-        console.error('Error fetching stats:', err);
         setError(err.message);
       } finally {
         setLoading(false);
@@ -41,7 +40,6 @@ const AdminDashboard: React.FC = () => {
           const data = await adminAPI.getAllUsers(page);
           setUsers(data.users || data);
         } catch (err: any) {
-          console.error('Error fetching users:', err);
           setError(err.message);
         } finally {
           setLoading(false);
@@ -60,7 +58,6 @@ const AdminDashboard: React.FC = () => {
           const data = await adminAPI.getReports(undefined, page);
           setReports(data.reports || data);
         } catch (err: any) {
-          console.error('Error fetching reports:', err);
           setError(err.message);
         } finally {
           setLoading(false);
@@ -79,7 +76,6 @@ const AdminDashboard: React.FC = () => {
           const data = await adminAPI.getAllPosts(page);
           setPosts(data.posts || data);
         } catch (err: any) {
-          console.error('Error fetching posts:', err);
           setError(err.message);
         } finally {
           setLoading(false);

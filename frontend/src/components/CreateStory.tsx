@@ -48,11 +48,9 @@ const CreateStory = ({ userData = {}, setView }: any) => {
         storyData.mediaUrl = selectedImage;
       }
 
-      console.log("Sending story data:", storyData);
-      
+
       // Gọi API tạo story
       const response = await storyAPI.createStory(storyData);
-      console.log("Story created successfully:", response);
       
       // Hiển thị thông báo thành công
       setShowSuccessMessage(true);
@@ -65,8 +63,7 @@ const CreateStory = ({ userData = {}, setView }: any) => {
       setTimeout(() => {
         navigate('/homepages');
       }, 2000);
-    } catch (error) {
-      console.error("Lỗi chia sẻ tin:", error);
+    } catch {
       alert("Không thể chia sẻ tin, vui lòng thử lại.");
     } finally {
       setIsSharing(false);

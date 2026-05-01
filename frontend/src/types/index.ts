@@ -2,6 +2,7 @@
 export interface User {
   id: number;
   userName: string;
+  fullName?: string;
   avatarUrl?: string;
   bio?: string;
 }
@@ -11,7 +12,7 @@ export interface Post {
   content: string;
   imageUrl?: string;
   createdAt: string;
-  userId?: number;
+  userId: number;
   user: User;
   likes?: Like[];
   comments?: Comment[];

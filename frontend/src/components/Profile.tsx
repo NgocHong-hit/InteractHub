@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
 import CreatePostModal from './CreatePostModal';
 import PostMenu from './PostMenu';
@@ -9,7 +10,6 @@ import {
   MoreHorizontal, 
   ThumbsUp, 
   MessageSquare, 
-  Share2, 
   Image as ImageIcon, 
   Smile,
   MapPin,
@@ -18,48 +18,110 @@ import {
   Flag,
   Heart,
   Mail,
-  Phone
+  Phone,
+  Edit2
 } from 'lucide-react';
 import profileAPI from '../api/profileAPI';
 import postsAPI from '../api/postsAPI';
+import likesAPI from '../api/likesAPI';
+import commentsAPI from '../api/commentsAPI';
+import friendAPI from '../api/friendAPI';
 import type { UserProfile } from '../api/profileAPI';
-import type { Post } from '../types';
+import type { Post, Comment } from '../types';
+import { toast } from 'react-hot-toast';
 
-const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('Tất cả');
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
+
+const Profile: React.FC = () => {
+  const { userId: paramUserId } = useParams<{ userId?: string }>();
+  const navigate = useNavigate();
+
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [visiblePostMenu, setVisiblePostMenu] = useState<number | null>(null);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [showComments, setShowComments] = useState<Record<number, boolean>>({});
+  const [commentText, setCommentText] = useState<Record<number, string>>({});
+  const [comments, setComments] = useState<Record<number, Comment[]>>({});
   const menuButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [friendStatus, setFriendStatus] = useState<'none' | 'sent' | 'received' | 'friends'>('none');
+  const [friendActionLoading, setFriendActionLoading] = useState(false);
 
-  // Hàm lấy dữ liệu từ Backend
-  const fetchProfile = async () => {
-    try {
-      const response = await profileAPI.getMe();
-      console.log("Dữ liệu nhận được:", response);
-      setUserProfile(response);
-      // Fetch posts after getting user profile
-      if (response.id) {
-        await fetchPosts(response.id);
+  // Xác định có phải profile của mình không
+  const isOwnProfile = !paramUserId || (currentUser && Number(paramUserId) === currentUser.id);
+
+  // Fetch dữ liệu
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        // Luôn fetch current user để so sánh
+        const me = await profileAPI.getMe();
+        setCurrentUser(me);
+
+        if (paramUserId && Number(paramUserId) !== me.id) {
+          // Xem profile người khác
+          const otherUser = await profileAPI.getUserById(Number(paramUserId));
+          setUserProfile(otherUser);
+          await fetchPosts(otherUser.id);
+          // Check friend status
+          try {
+            const statusRes = await friendAPI.checkStatus(Number(paramUserId));
+            setFriendStatus(statusRes.data?.status || 'none');
+          } catch { setFriendStatus('none'); }
+        } else {
+          // Xem profile của mình
+          setUserProfile(me);
+          await fetchPosts(me.id);
+        }
+      } catch {
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Lỗi tải profile:", error);
-    } finally {
-      setLoading(false);
+    };
+    loadData();
+  }, [paramUserId]);
+
+  const fetchPosts = async (uid: number) => {
+    try {
+      const userPosts = await postsAPI.getPostsByUserId(uid);
+      setPosts(userPosts);
+    } catch {
     }
   };
 
-  const fetchPosts = async (userId: number) => {
+  // Avatar upload
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingAvatar(true);
     try {
-      const userPosts = await postsAPI.getPostsByUserId(userId);
-      setPosts(userPosts);
-    } catch (error) {
-      console.error("Lỗi tải bài viết:", error);
+      const result = await profileAPI.uploadAvatar(file);
+      setUserProfile(prev => prev ? { ...prev, avatarUrl: result.avatarUrl } : prev);
+      // Cập nhật localStorage
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        parsed.avatarUrl = result.avatarUrl;
+        localStorage.setItem('user', JSON.stringify(parsed));
+      }
+    } catch {
+      alert('Không thể cập nhật ảnh đại diện');
+    } finally {
+      setUploadingAvatar(false);
     }
+  };
+
+  // Post actions
+  const handleNewPost = (data: Post) => {
+    setPosts(prev => [data, ...prev]);
   };
 
   const handleEditPost = (postId: number) => {
@@ -72,19 +134,16 @@ const App: React.FC = () => {
   };
 
   const handleUpdatePost = async (updatedContent: string, image?: File | null) => {
-    if (!editingPost) return;
-
+    if (!editingPost || !userProfile) return;
     try {
       await postsAPI.updatePost(editingPost.id, {
         content: updatedContent,
         image: image || undefined
       });
-      await fetchPosts(userProfile!.id);
+      await fetchPosts(userProfile.id);
       setIsEditModalOpen(false);
       setEditingPost(null);
-      alert('Bài viết đã được cập nhật');
-    } catch (error) {
-      console.error('Error updating post:', error);
+    } catch {
       alert('Không thể cập nhật bài viết');
     }
   };
@@ -94,27 +153,58 @@ const App: React.FC = () => {
       await postsAPI.deletePost(postId);
       setPosts(prev => prev.filter(p => p.id !== postId));
       setVisiblePostMenu(null);
-      alert('Bài viết đã được xóa');
-    } catch (error) {
-      console.error('Error deleting post:', error);
+    } catch {
       alert('Không thể xóa bài viết');
     }
   };
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  const handleNewPost = (data: Post) => {
-    setPosts(prev => [data, ...prev]);
+  // Like
+  const handleLike = async (postId: number) => {
+    if (!userProfile) return;
+    try {
+      await likesAPI.toggleLike({ postId });
+      await fetchPosts(userProfile.id);
+    } catch {
+    }
   };
 
-  // Xử lý định dạng ngày sinh chuẩn tiếng Việt
+  // Comments
+  const toggleComments = async (postId: number) => {
+    const isShowing = showComments[postId];
+    setShowComments(prev => ({ ...prev, [postId]: !prev[postId] }));
+    if (!isShowing && !comments[postId]) {
+      try {
+        const data = await commentsAPI.getCommentsByPostId(postId);
+        setComments(prev => ({ ...prev, [postId]: data }));
+      } catch {
+      }
+    }
+  };
+
+  const handleComment = async (postId: number) => {
+    const content = commentText[postId]?.trim();
+    if (!content) return;
+    try {
+      await commentsAPI.createComment({ postId, content });
+      setCommentText(prev => ({ ...prev, [postId]: '' }));
+      const data = await commentsAPI.getCommentsByPostId(postId);
+      setComments(prev => ({ ...prev, [postId]: data }));
+      if (userProfile) await fetchPosts(userProfile.id);
+    } catch {
+    }
+  };
+
+  // Format helpers
   const formatBirthday = (dateString?: string) => {
     if (!dateString) return "Chưa cập nhật";
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return "Chưa cập nhật";
     return `${date.getDate()} tháng ${date.getMonth() + 1}, ${date.getFullYear()}`;
+  };
+
+  const getAvatarUrl = (url?: string, seed?: string) => {
+    if (url) return url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed || 'user'}`;
   };
 
   if (loading) {
@@ -128,9 +218,9 @@ const App: React.FC = () => {
     );
   }
 
-  // Lấy tên cuối cùng để chào hỏi (Ví dụ: "Nguyễn Văn A" -> "A")
   const displayName = userProfile?.fullName || userProfile?.userName || "bạn";
   const firstName = displayName.split(' ').pop();
+  const avatarSrc = getAvatarUrl(userProfile?.avatarUrl, userProfile?.userName);
 
   return (
     <div className="min-h-screen bg-[#F0F2F5] font-sans text-[#1C1E21]">
@@ -141,19 +231,42 @@ const App: React.FC = () => {
         <div className="bg-white shadow-sm pt-8">
           <div className="max-w-[1095px] mx-auto px-4">
             <div className="flex flex-col md:flex-row items-center md:items-end pb-6 gap-4 px-4 md:px-8">
+              {/* Avatar */}
               <div className="relative group/avatar">
                 <div className="w-40 h-40 rounded-full border-4 border-white overflow-hidden bg-white shadow-lg relative z-10">
-                  <img 
-                    src={userProfile?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userProfile?.userName}`} 
-                    className="w-full h-full object-cover" 
-                    alt="avatar" 
-                  />
+                  {uploadingAvatar ? (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                      <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  ) : (
+                    <img 
+                      src={avatarSrc} 
+                      className="w-full h-full object-cover" 
+                      alt="avatar" 
+                    />
+                  )}
                 </div>
-                <button className="absolute bottom-2 right-2 p-2 bg-gray-200 hover:bg-gray-300 rounded-full border-2 border-white shadow-sm z-20 transition-all">
-                  <Camera size={20} />
-                </button>
+                {isOwnProfile && (
+                  <>
+                    <button 
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="absolute bottom-2 right-2 p-2 bg-gray-200 hover:bg-gray-300 rounded-full border-2 border-white shadow-sm z-20 transition-all"
+                      title="Thay đổi ảnh đại diện"
+                    >
+                      <Camera size={20} />
+                    </button>
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                    />
+                  </>
+                )}
               </div>
 
+              {/* Info */}
               <div className="flex-1 text-center md:text-left mb-2">
                 <h1 className="text-3xl font-bold text-gray-900">
                   {userProfile?.fullName || userProfile?.userName}
@@ -164,27 +277,90 @@ const App: React.FC = () => {
                 )}
               </div>
 
+              {/* Actions */}
               <div className="flex gap-2 mb-4">
-                <button className="bg-[#0866FF] hover:bg-[#0759E0] text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-all active:scale-95 shadow-md">
-                  <Plus size={18} /> Thêm vào tin
-                </button>
-              </div>
-            </div>
-
-            {/* Tabs Bar */}
-            <div className="flex border-t border-gray-100 items-center justify-between">
-              <div className="flex overflow-x-auto no-scrollbar">
-                {['Tất cả', 'Giới thiệu', 'Bạn bè', 'Ảnh'].map(tab => (
+                {isOwnProfile ? (
                   <button 
-                    key={tab} 
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-5 font-bold text-sm transition-all border-b-4 ${activeTab === tab ? 'text-[#0866FF] border-[#0866FF]' : 'text-[#65676B] border-transparent hover:bg-gray-100 rounded-lg m-1'}`}
+                    onClick={() => navigate('/settings')}
+                    className="bg-[#E4E6EB] text-gray-900 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-all hover:bg-[#D8DADF] active:scale-95"
                   >
-                    {tab}
+                    <Edit2 size={18}/> Chỉnh sửa trang cá nhân
                   </button>
-                ))}
+                ) : (
+                  <>
+                    {friendStatus === 'none' && (
+                      <button
+                        disabled={friendActionLoading}
+                        onClick={async () => {
+                          setFriendActionLoading(true);
+                          try {
+                            const res = await friendAPI.sendRequest(Number(paramUserId));
+                            if (res.success) { setFriendStatus('sent'); toast.success('Đã gửi lời mời kết bạn!'); }
+                            else toast.error(res.message || 'Thao tác thất bại');
+                          } catch { toast.error('Lỗi kết nối Server'); }
+                          finally { setFriendActionLoading(false); }
+                        }}
+                        className="bg-[#0866FF] hover:bg-[#0759E0] text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-all active:scale-95 shadow-md disabled:opacity-60"
+                      >
+                        <Plus size={18} /> Thêm bạn bè
+                      </button>
+                    )}
+                    {friendStatus === 'sent' && (
+                      <button
+                        disabled={friendActionLoading}
+                        onClick={async () => {
+                          setFriendActionLoading(true);
+                          try {
+                            const res = await friendAPI.removeFriend(Number(paramUserId));
+                            if (res.success) { setFriendStatus('none'); toast.success('Đã hủy lời mời'); }
+                          } catch { toast.error('Lỗi kết nối Server'); }
+                          finally { setFriendActionLoading(false); }
+                        }}
+                        className="bg-[#E4E6EB] text-gray-700 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-all hover:bg-[#D8DADF] active:scale-95"
+                      >
+                        Đã gửi lời mời
+                      </button>
+                    )}
+                    {friendStatus === 'received' && (
+                      <button
+                        disabled={friendActionLoading}
+                        onClick={async () => {
+                          setFriendActionLoading(true);
+                          try {
+                            const statusRes = await friendAPI.checkStatus(Number(paramUserId));
+                            const fId = statusRes.data?.friendshipId;
+                            if (fId) {
+                              const res = await friendAPI.acceptRequest(fId);
+                              if (res.success) { setFriendStatus('friends'); toast.success('Đã chấp nhận lời mời!'); }
+                            }
+                          } catch { toast.error('Lỗi kết nối Server'); }
+                          finally { setFriendActionLoading(false); }
+                        }}
+                        className="bg-[#0866FF] hover:bg-[#0759E0] text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-all active:scale-95 shadow-md disabled:opacity-60"
+                      >
+                        Chấp nhận lời mời
+                      </button>
+                    )}
+                    {friendStatus === 'friends' && (
+                      <button
+                        disabled={friendActionLoading}
+                        onClick={async () => {
+                          if (!confirm('Bạn có chắc muốn hủy kết bạn?')) return;
+                          setFriendActionLoading(true);
+                          try {
+                            const res = await friendAPI.removeFriend(Number(paramUserId));
+                            if (res.success) { setFriendStatus('none'); toast.success('Đã hủy kết bạn'); }
+                          } catch { toast.error('Lỗi kết nối Server'); }
+                          finally { setFriendActionLoading(false); }
+                        }}
+                        className="bg-green-50 text-green-700 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-all hover:bg-green-100 active:scale-95 border border-green-200"
+                      >
+                        <Users size={18} /> Bạn bè
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
-              <button className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-[#65676B]"><MoreHorizontal size={20}/></button>
             </div>
           </div>
         </div>
@@ -224,27 +400,29 @@ const App: React.FC = () => {
 
           {/* CỘT PHẢI - DÒNG THỜI GIAN */}
           <div className="lg:col-span-3 space-y-4">
-            {/* Thanh tạo bài viết */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-              <div className="flex gap-3 mb-4">
-                <img 
-                  src={userProfile?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userProfile?.userName}`} 
-                  className="w-10 h-10 rounded-full" 
-                  alt="avatar" 
-                />
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="w-full bg-[#F0F2F5] hover:bg-[#E4E6EB] text-[#65676B] text-left px-4 py-2.5 rounded-full text-[17px] transition-colors"
-                >
-                    {firstName} ơi, bạn đang nghĩ gì thế?
-                </button>
+            {/* Thanh tạo bài viết (chỉ hiện ở profile mình) */}
+            {isOwnProfile && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                <div className="flex gap-3 mb-4">
+                  <img 
+                    src={avatarSrc} 
+                    className="w-10 h-10 rounded-full object-cover" 
+                    alt="avatar" 
+                  />
+                  <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="w-full bg-[#F0F2F5] hover:bg-[#E4E6EB] text-[#65676B] text-left px-4 py-2.5 rounded-full text-[17px] transition-colors"
+                  >
+                      {firstName} ơi, bạn đang nghĩ gì thế?
+                  </button>
+                </div>
+                <div className="flex border-t border-gray-100 pt-2 gap-1">
+                  <PostTypeBtn icon={<ImageIcon className="text-[#45BD62]" size={20}/>} label="Ảnh/video" />
+                  <PostTypeBtn icon={<Flag className="text-[#05A5F2]" size={20}/>} label="Cột mốc" />
+                  <PostTypeBtn icon={<Smile className="text-[#EAB308]" size={20}/>} label="Cảm xúc" />
+                </div>
               </div>
-              <div className="flex border-t border-gray-100 pt-2 gap-1">
-                <PostTypeBtn icon={<ImageIcon className="text-[#45BD62]" size={20}/>} label="Ảnh/video" />
-                <PostTypeBtn icon={<Flag className="text-[#05A5F2]" size={20}/>} label="Cột mốc" />
-                <PostTypeBtn icon={<Smile className="text-[#EAB308]" size={20}/>} label="Cảm xúc" />
-              </div>
-            </div>
+            )}
 
             <CreatePostModal
               isOpen={isModalOpen}
@@ -257,80 +435,185 @@ const App: React.FC = () => {
             />
 
             {/* Danh sách bài viết */}
-            {posts.map(post => (
-              <div key={post.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-4 flex justify-between items-start">
-                  <div className="flex gap-3">
-                    <img src={post.user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.user.userName}`} className="w-10 h-10 rounded-full" alt="author" />
-                    <div>
-                      <h4 className="font-bold text-[15px] hover:underline cursor-pointer">{post.user.userName}</h4>
-                      <p className="text-[13px] text-gray-500 hover:underline cursor-pointer">{new Date(post.createdAt).toLocaleString('vi-VN')} • 🌏</p>
-                    </div>
-                  </div>
-                  <button 
-                    ref={el => menuButtonRefs.current[post.id] = el}
-                    onClick={() => setVisiblePostMenu(visiblePostMenu === post.id ? null : post.id)}
-                    className="p-2 hover:bg-gray-100 rounded-full text-gray-500"
-                  >
-                    <MoreHorizontal size={20}/>
-                  </button>
-                </div>
-
-                <div className="px-4 pb-3 text-[15px] leading-relaxed text-gray-900">
-                  {post.content}
-                </div>
-
-                {post.imageUrl && (
-                  <div className="px-4 pb-3">
-                    <img src={`http://localhost:5012${post.imageUrl}`} alt="Post image" className="w-full rounded-lg" />
-                  </div>
-                )}
-
-                <div className="px-4 py-2.5 flex justify-between items-center text-sm text-[#65676B] border-t border-gray-50">
-                  <div className="flex items-center gap-1.5 cursor-pointer">
-                    <div className="flex -space-x-1">
-                      <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-white ring-2 ring-white">
-                        <ThumbsUp size={10} className="fill-current"/>
-                      </div>
-                      <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white ring-2 ring-white">
-                        <Heart size={10} className="fill-current"/>
-                      </div>
-                    </div>
-                    <span className="hover:underline font-medium">{post.likesCount}</span>
-                  </div>
-                  <div className="font-medium hover:underline cursor-pointer">
-                    {post.commentsCount} bình luận
-                  </div>
-                </div>
-
-                <div className="mx-4 mb-2 p-1 flex gap-1 border-t border-gray-100">
-                  <ActionButton icon={<ThumbsUp size={20} />} text="Thích" />
-                  <ActionButton icon={<MessageSquare size={20} />} text="Bình luận" />
-                  <ActionButton icon={<Share2 size={20} />} text="Chia sẻ" />
-                </div>
+            {posts.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center">
+                <p className="text-gray-400 font-medium">Chưa có bài viết nào</p>
               </div>
-            ))}
+            ) : (
+              posts.map(post => (
+                <div key={post.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="p-4 flex justify-between items-start">
+                    <div className="flex gap-3">
+                      <img 
+                        src={getAvatarUrl(post.user?.avatarUrl, post.user?.userName)} 
+                        className="w-10 h-10 rounded-full object-cover cursor-pointer" 
+                        alt="author" 
+                        onClick={() => navigate(`/profile/${post.userId}`)}
+                      />
+                      <div>
+                        <h4 
+                          className="font-bold text-[15px] hover:underline cursor-pointer"
+                          onClick={() => navigate(`/profile/${post.userId}`)}
+                        >
+                          {post.user?.fullName || post.user?.userName}
+                        </h4>
+                        <p className="text-[13px] text-gray-500">{new Date(post.createdAt).toLocaleString('vi-VN')} • 🌏</p>
+                      </div>
+                    </div>
+                    {isOwnProfile && (
+                      <div className="relative">
+                        <button 
+                          ref={el => { if (el) menuButtonRefs.current[post.id] = el; }}
+                          onClick={() => setVisiblePostMenu(visiblePostMenu === post.id ? null : post.id)}
+                          className="p-2 hover:bg-gray-100 rounded-full text-gray-500"
+                        >
+                          <MoreHorizontal size={20}/>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="px-4 pb-3 text-[15px] leading-relaxed text-gray-900">
+                    {post.content}
+                  </div>
+
+                  {/* Hashtag badges */}
+                  {post.postHashtags && post.postHashtags.length > 0 && (
+                    <div className="px-4 pb-3 flex flex-wrap gap-1.5">
+                      {post.postHashtags.map((ph: any, idx: number) => (
+                        <button
+                          key={idx}
+                          onClick={() => navigate(`/hashtags?tag=${encodeURIComponent(ph.hashtag?.name || '')}`)}
+                          className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-semibold border border-blue-100 hover:bg-blue-100 transition-colors cursor-pointer"
+                        >
+                          {ph.hashtag?.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {post.imageUrl && (
+                    <img src={`${API_BASE_URL}${post.imageUrl}`} alt="Post image" className="w-full max-h-[450px] object-cover border-y border-gray-50" />
+                  )}
+
+                  <div className="px-4 py-2.5 flex justify-between items-center text-sm text-[#65676B] border-t border-gray-50">
+                    <div className="flex items-center gap-1.5 cursor-pointer">
+                      <div className="flex -space-x-1">
+                        <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-white ring-2 ring-white">
+                          <ThumbsUp size={10} className="fill-current"/>
+                        </div>
+                        <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white ring-2 ring-white">
+                          <Heart size={10} className="fill-current"/>
+                        </div>
+                      </div>
+                      <span className="hover:underline font-medium">{post.likes?.length || 0}</span>
+                    </div>
+                    <div className="font-medium hover:underline cursor-pointer" onClick={() => toggleComments(post.id)}>
+                      {post.comments?.length || 0} bình luận
+                    </div>
+                  </div>
+
+                  <div className="mx-4 mb-2 p-1 flex gap-1 border-t border-gray-100">
+                    <button 
+                      onClick={() => handleLike(post.id)}
+                      className="flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg font-bold text-[15px] hover:bg-gray-100 transition-colors text-[#65676B]"
+                    >
+                      <ThumbsUp size={20} /> Thích
+                    </button>
+                    <button 
+                      onClick={() => toggleComments(post.id)}
+                      className="flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg font-bold text-[15px] hover:bg-gray-100 transition-colors text-[#65676B]"
+                    >
+                      <MessageSquare size={20} /> Bình luận
+                    </button>
+                  </div>
+
+                  {/* Comments section */}
+                  {showComments[post.id] && (
+                    <div className="px-4 pb-4 border-t border-gray-100">
+                      <div className="flex gap-2 mt-3">
+                        <img 
+                          src={getAvatarUrl(currentUser?.avatarUrl, currentUser?.userName)} 
+                          className="w-8 h-8 rounded-full object-cover" 
+                          alt="" 
+                        />
+                        <div className="flex-1 flex gap-2">
+                          <input
+                            type="text"
+                            value={commentText[post.id] ?? ''}
+                            onChange={(e) => setCommentText(prev => ({ ...prev, [post.id]: e.target.value }))}
+                            placeholder="Viết bình luận..."
+                            className="flex-1 px-3 py-2 border border-gray-200 rounded-full text-sm focus:outline-none focus:border-blue-500"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleComment(post.id);
+                              }
+                            }}
+                          />
+                          <button
+                            onClick={() => handleComment(post.id)}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-medium hover:bg-blue-700"
+                          >
+                            Đăng
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 space-y-3">
+                        {(comments[post.id] || []).map((comment: Comment) => (
+                          <div key={comment.id} className="flex gap-2">
+                            <img
+                              src={getAvatarUrl(comment.user?.avatarUrl, comment.user?.userName)}
+                              className="w-8 h-8 rounded-full object-cover cursor-pointer"
+                              alt=""
+                              onClick={() => navigate(`/profile/${comment.userId}`)}
+                            />
+                            <div className="flex-1">
+                              <div className="bg-gray-100 px-3 py-2 rounded-2xl">
+                                <p 
+                                  className="font-medium text-sm hover:underline cursor-pointer"
+                                  onClick={() => navigate(`/profile/${comment.userId}`)}
+                                >
+                                  {comment.user?.userName || 'Người dùng'}
+                                </p>
+                                <p className="text-sm text-gray-800">{comment.content}</p>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1 ml-3">{new Date(comment.createdAt).toLocaleString('vi-VN')}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
 
-      <PostMenu
-        postId={visiblePostMenu || 0}
-        isVisible={visiblePostMenu !== null}
-        buttonRef={{ current: visiblePostMenu ? menuButtonRefs.current[visiblePostMenu] : null }}
-        onEdit={handleEditPost}
-        onDelete={handleDeletePost}
-        onClose={() => setVisiblePostMenu(null)}
-        canEdit={visiblePostMenu ? posts.find(p => p.id === visiblePostMenu)?.userId === userProfile?.id : false}
-      />
+      {isOwnProfile && (
+        <>
+          <PostMenu
+            postId={visiblePostMenu || 0}
+            isVisible={visiblePostMenu !== null}
+            buttonRef={{ current: visiblePostMenu ? menuButtonRefs.current[visiblePostMenu] : null }}
+            onEdit={handleEditPost}
+            onDelete={handleDeletePost}
+            onClose={() => setVisiblePostMenu(null)}
+            canEdit={true}
+          />
 
-      <EditPostModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        onSave={handleUpdatePost}
-        initialContent={editingPost?.content || ''}
-        initialImage={editingPost?.imageUrl ? `http://localhost:5012${editingPost.imageUrl}` : undefined}
-      />
+          <EditPostModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            onSave={handleUpdatePost}
+            initialContent={editingPost?.content || ''}
+            initialImage={editingPost?.imageUrl ? `${API_BASE_URL}${editingPost.imageUrl}` : undefined}
+          />
+        </>
+      )}
     </div>
   );
 };
@@ -350,10 +633,4 @@ const PostTypeBtn: React.FC<{ icon: React.ReactNode; label: string }> = ({ icon,
   </button>
 );
 
-const ActionButton: React.FC<{ icon: React.ReactNode; text: string }> = ({ icon, text }) => (
-  <button className="flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg font-bold text-[15px] hover:bg-gray-100 transition-colors text-[#65676B]">
-    {icon} {text}
-  </button>
-);
-
-export default App;
+export default Profile;

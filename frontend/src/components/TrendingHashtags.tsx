@@ -46,8 +46,7 @@ const TrendingHashtags = ({ userData }: any) => {
       setError(null);
       const data = await hashtagAPI.getTrendingHashtags(10);
       setTrendingData(data);
-    } catch (err) {
-      console.error('Failed to fetch trending hashtags:', err);
+    } catch {
       setError('Không thể tải hashtag xu hướng');
     } finally {
       setLoading(false);
@@ -59,8 +58,7 @@ const TrendingHashtags = ({ userData }: any) => {
       setPostsLoading(true);
       const posts = await hashtagAPI.searchPostsByHashtag(tagName);
       setTagPosts(posts);
-    } catch (err) {
-      console.error('Failed to fetch posts for hashtag:', err);
+    } catch {
       setTagPosts([]);
     } finally {
       setPostsLoading(false);

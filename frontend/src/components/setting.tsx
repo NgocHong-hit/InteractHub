@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // ĐÃ NHÚNG: Thêm useEffect
+import React, { useState, useEffect, useRef } from 'react'; // ĐÃ NHÚNG: Thêm useEffect, useRef
 import Navbar from './Navbar';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -61,6 +61,8 @@ const App: React.FC = () => {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordChangeStatus, setPasswordChangeStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [passwordErrorMessage, setPasswordErrorMessage] = useState('');
+  const avatarFileRef = useRef<HTMLInputElement>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // --- ĐÃ NHÚNG: Hàm lấy dữ liệu và format ngày sinh ---
   const fetchProfile = async () => {
@@ -68,8 +70,7 @@ const App: React.FC = () => {
       const response = await profileAPI.getMe();
       setUserProfile(response);
       setEditProfile(response);
-    } catch (error) {
-      console.error("Lỗi tải profile:", error);
+    } catch {
     } finally {
       setLoading(false);
     }
@@ -104,8 +105,7 @@ const App: React.FC = () => {
       });
       setUserProfile((prev) => ({ ...(prev ?? {}), ...editProfile } as UserProfile));
       setSaveStatus('success');
-    } catch (error) {
-      console.error('Lỗi cập nhật profile:', error);
+    } catch {
       setSaveStatus('error');
     } finally {
       setIsSaving(false);
@@ -126,9 +126,17 @@ const App: React.FC = () => {
     return `${date.getDate()} tháng ${date.getMonth() + 1}, ${date.getFullYear()}`;
   };
 
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
+
   // --- ĐÃ NHÚNG: Logic xử lý hiển thị linh hoạt ---
   const displayName = userProfile?.fullName || userProfile?.userName || "Người dùng";
-  const profileAvatar = userProfile?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userProfile?.userName}`;
+  const getSettingsAvatar = () => {
+    if (userProfile?.avatarUrl) {
+      return userProfile.avatarUrl.startsWith('http') ? userProfile.avatarUrl : `${API_BASE_URL}${userProfile.avatarUrl}`;
+    }
+    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${userProfile?.userName}`;
+  };
+  const profileAvatar = getSettingsAvatar();
   const firstName = displayName.split(' ').pop();
 
   const settingsCategories: SettingsCategory[] = [
@@ -168,8 +176,7 @@ const App: React.FC = () => {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmNewPassword('');
-    } catch (error) {
-      console.error('Lỗi đổi mật khẩu:', error);
+    } catch {
       alert("Đã có lỗi xảy ra, vui lòng thử lại.");
     }
   };
@@ -232,13 +239,47 @@ const App: React.FC = () => {
                   {activeSettingsCategory === 'account' && (
                     <div className="space-y-8">
                       <div className="flex items-center gap-6 p-4 bg-blue-50/30 rounded-xl border border-blue-100/50">
-                        <img src={profileAvatar} className="w-20 h-20 rounded-full border-2 border-white shadow-sm" alt="profile" />
+                        <img src={profileAvatar} className="w-20 h-20 rounded-full border-2 border-white shadow-sm object-cover" alt="profile" />
                         <div>
                           <p className="font-bold text-gray-800">Ảnh đại diện</p>
                           <p className="text-xs text-gray-500 mb-3">Sử dụng ảnh thật để bạn bè dễ nhận ra bạn hơn.</p>
                           <div className="flex gap-2">
-                            <button className="bg-blue-600 text-white text-xs px-4 py-1.5 rounded-lg font-bold">Thay đổi</button>
-                            <button className="bg-white border border-gray-200 text-gray-700 text-xs px-4 py-1.5 rounded-lg font-bold">Gỡ bỏ</button>
+                            <button
+                              type="button"
+                              disabled={uploadingAvatar}
+                              onClick={() => avatarFileRef.current?.click()}
+                              className="bg-blue-600 text-white text-xs px-4 py-1.5 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-60"
+                            >
+                              {uploadingAvatar ? 'Đang tải...' : 'Thay đổi'}
+                            </button>
+                            <input
+                              ref={avatarFileRef}
+                              type="file"
+                              accept="image/jpeg,image/png,image/gif,image/webp"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                setUploadingAvatar(true);
+                                try {
+                                  const result = await profileAPI.uploadAvatar(file);
+                                  setUserProfile(prev => prev ? { ...prev, avatarUrl: result.avatarUrl } : prev);
+                                  // Cập nhật localStorage
+                                  const storedUser = localStorage.getItem('user');
+                                  if (storedUser) {
+                                    const parsed = JSON.parse(storedUser);
+                                    parsed.avatarUrl = result.avatarUrl;
+                                    localStorage.setItem('user', JSON.stringify(parsed));
+                                  }
+                                  alert('Cập nhật ảnh đại diện thành công!');
+                                } catch {
+                                  alert('Không thể cập nhật ảnh đại diện');
+                                } finally {
+                                  setUploadingAvatar(false);
+                                  e.target.value = '';
+                                }
+                              }}
+                            />
                           </div>
                         </div>
                       </div>
@@ -295,6 +336,17 @@ const App: React.FC = () => {
                             value={editProfile?.address || ''}
                             onChange={(e) => handleProfileChange('address', e.target.value)}
                             className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Số điện thoại</label>
+                          <input
+                            type="tel"
+                            value={editProfile?.phoneNumber || ''}
+                            onChange={(e) => handleProfileChange('phoneNumber', e.target.value)}
+                            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            placeholder="Nhập số điện thoại"
                           />
                         </div>
 
@@ -497,12 +549,12 @@ const App: React.FC = () => {
         )}
       </div>
 
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin-slow { animation: spin-slow 8s linear infinite; }
-      `}} />
+      `}</style>
     </div>
   );
 };

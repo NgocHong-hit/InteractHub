@@ -35,7 +35,7 @@ const postsAPI = {
     }
     const { data } = await axiosClient.post<Post>('/posts', formData, {
       headers: {
-        'Content-Type': undefined,
+        'Content-Type': 'multipart/form-data',
       },
     });
     return data;
@@ -49,7 +49,11 @@ const postsAPI = {
     if (payload.image) {
       formData.append('Image', payload.image);
     }
-    const { data } = await axiosClient.put<Post>(`/posts/${id}`, formData);
+    const { data } = await axiosClient.put<Post>(`/posts/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return data;
   },
 

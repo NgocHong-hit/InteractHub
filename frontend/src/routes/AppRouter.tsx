@@ -27,6 +27,7 @@ const AppRouter = () => {
         <Route path="/homepages" element={<HomePages />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/:userId" element={<Profile />} />
         <Route path="/friends" element={<Friends />} />
         <Route path="/hashtags" element={<TrendingHashtags />} />
         <Route path="/create-story" element={<CreateStory />} />

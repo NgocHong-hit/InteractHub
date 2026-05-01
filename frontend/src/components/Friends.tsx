@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   UserPlus, UserCheck, UserX, Search,
   Users2, Clock, X, CheckCircle2
@@ -50,6 +51,7 @@ const Avatar = ({ url, seed, size = 'lg' }: { url?: string; seed?: string; size?
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const Friends = ({ userData }: any) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<ActiveTab>('suggestions');
   const [searchTerm, setSearchTerm] = useState('');
   const [suggestions, setSuggestions] = useState<SuggestionUser[]>([]);
@@ -191,6 +193,7 @@ const Friends = ({ userData }: any) => {
               <SuggestionCard
                 key={user.id}
                 user={user}
+                onNavigate={() => navigate(`/profile/${user.id}`)}
                 onSendRequest={() => handleAction(
                   () => friendAPI.sendRequest(user.id),
                   'Đã gửi lời mời kết bạn!'
@@ -211,6 +214,7 @@ const Friends = ({ userData }: any) => {
               <FriendCard
                 key={friend.userId}
                 friend={friend}
+                onNavigate={() => navigate(`/profile/${friend.userId}`)}
                 onUnfriend={() => handleAction(
                   () => friendAPI.removeFriend(friend.userId),
                   'Đã hủy kết bạn'
@@ -226,6 +230,7 @@ const Friends = ({ userData }: any) => {
                 userName={req.senderUserName}
                 avatarUrl={req.senderAvatarUrl}
                 createdAt={req.createdAt}
+                onNavigate={() => navigate(`/profile/${req.senderId}`)}
                 onAccept={() => handleAction(
                   () => friendAPI.acceptRequest(req.friendshipId),
                   'Đã chấp nhận lời mời!'
@@ -246,6 +251,7 @@ const Friends = ({ userData }: any) => {
                 userName={req.receiverUserName}
                 avatarUrl={req.receiverAvatarUrl}
                 createdAt={req.createdAt}
+                onNavigate={() => navigate(`/profile/${req.receiverId}`)}
                 onCancel={() => handleAction(
                   () => friendAPI.removeFriend(req.receiverId),
                   'Đã hủy yêu cầu kết bạn'
@@ -265,11 +271,13 @@ const Friends = ({ userData }: any) => {
 // ─── Suggestion Card ──────────────────────────────────────────────────────────
 const SuggestionCard = ({
   user,
+  onNavigate,
   onSendRequest,
   onCancelRequest,
   onUnfriend,
 }: {
   user: SuggestionUser;
+  onNavigate: () => void;
   onSendRequest: () => void;
   onCancelRequest: () => void;
   onUnfriend: () => void;
@@ -277,10 +285,10 @@ const SuggestionCard = ({
   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
     <div className="h-20 bg-gradient-to-r from-blue-400 to-indigo-500" />
     <div className="px-5 pb-6 flex flex-col items-center">
-      <div className="-mt-10 mb-3 ring-4 ring-white rounded-full">
+      <div className="-mt-10 mb-3 ring-4 ring-white rounded-full cursor-pointer" onClick={onNavigate}>
         <Avatar url={user.avatarUrl} seed={user.userName} />
       </div>
-      <h3 className="font-bold text-lg text-gray-900 text-center">{user.fullName || user.userName}</h3>
+      <h3 className="font-bold text-lg text-gray-900 text-center hover:underline cursor-pointer" onClick={onNavigate}>{user.fullName || user.userName}</h3>
       <p className="text-sm text-gray-500 mb-5 font-medium">@{user.userName}</p>
 
       <div className="flex gap-2 w-full">
@@ -330,18 +338,20 @@ const SuggestionCard = ({
 // ─── Friend Card ──────────────────────────────────────────────────────────────
 const FriendCard = ({
   friend,
+  onNavigate,
   onUnfriend,
 }: {
   friend: FriendItem;
+  onNavigate: () => void;
   onUnfriend: () => void;
 }) => (
   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
     <div className="h-20 bg-gradient-to-r from-green-400 to-emerald-500" />
     <div className="px-5 pb-6 flex flex-col items-center">
-      <div className="-mt-10 mb-3 ring-4 ring-white rounded-full">
+      <div className="-mt-10 mb-3 ring-4 ring-white rounded-full cursor-pointer" onClick={onNavigate}>
         <Avatar url={friend.avatarUrl} seed={friend.userName} />
       </div>
-      <h3 className="font-bold text-lg text-gray-900 text-center">{friend.fullName || friend.userName}</h3>
+      <h3 className="font-bold text-lg text-gray-900 text-center hover:underline cursor-pointer" onClick={onNavigate}>{friend.fullName || friend.userName}</h3>
       <p className="text-sm text-gray-500 mb-1 font-medium">@{friend.userName}</p>
       {friend.friendsSince && (
         <p className="text-xs text-gray-400 mb-4">
@@ -374,6 +384,7 @@ const RequestCard = ({
   onAccept,
   onReject,
   onCancel,
+  onNavigate,
   mode,
 }: {
   name: string;
@@ -383,15 +394,16 @@ const RequestCard = ({
   onAccept?: () => void;
   onReject?: () => void;
   onCancel?: () => void;
+  onNavigate?: () => void;
   mode: 'incoming' | 'sent';
 }) => (
   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
     <div className={`h-20 bg-gradient-to-r ${mode === 'incoming' ? 'from-purple-400 to-pink-500' : 'from-orange-400 to-amber-500'}`} />
     <div className="px-5 pb-6 flex flex-col items-center">
-      <div className="-mt-10 mb-3 ring-4 ring-white rounded-full">
+      <div className="-mt-10 mb-3 ring-4 ring-white rounded-full cursor-pointer" onClick={onNavigate}>
         <Avatar url={avatarUrl} seed={userName} />
       </div>
-      <h3 className="font-bold text-lg text-gray-900 text-center">{name}</h3>
+      <h3 className="font-bold text-lg text-gray-900 text-center hover:underline cursor-pointer" onClick={onNavigate}>{name}</h3>
       <p className="text-sm text-gray-500 mb-1 font-medium">@{userName}</p>
       <p className="text-xs text-gray-400 mb-4 flex items-center gap-1">
         <Clock size={11} />
