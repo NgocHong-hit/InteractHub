@@ -6,9 +6,11 @@ import {
   Loader2, MapPin, Calendar, Users 
 } from 'lucide-react';
 import accountAPI from '../api/accountAPI';
+import { useAuth } from '../context/AuthContext';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const { register, handleSubmit, watch, formState: { errors } } = useForm();
 
@@ -29,7 +31,16 @@ const Register: React.FC = () => {
       alert('Đăng ký thành công!');
 
       if (response.token) {
-        localStorage.setItem('token', response.token);
+        // Extract user data from response
+        const userData = {
+          id: 0, // ID will be set from token if needed
+          userName: response.userName || '',
+          fullName: response.fullName,
+          email: response.email,
+        };
+        
+        // Use AuthContext's login method to properly store user data
+        login(response.token, userData as any);
         navigate('/homepages');
       }
     } catch (error: any) {

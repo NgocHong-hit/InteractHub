@@ -3,11 +3,13 @@ import { useForm } from 'react-hook-form';
 import { LogIn, Mail, Lock, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import accountAPI from '../api/accountAPI';
+import { useAuth } from '../context/AuthContext';
 
 const App: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { register, handleSubmit, formState: { errors } } = useForm();
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const onSubmit = async (data: any) => {
     setErrorMessage(null);
@@ -18,8 +20,16 @@ const App: React.FC = () => {
       });
 
       if (response.token) {
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('user', JSON.stringify(response));
+        // Extract user data from response
+        const userData = {
+          id: 0, // ID will be set from token if needed
+          userName: response.userName || '',
+          fullName: response.fullName,
+          email: response.email,
+        };
+        
+        // Use AuthContext's login method to properly store user data
+        login(response.token, userData as any);
 
         if (response.role === 'Admin') {
           navigate('/admin');

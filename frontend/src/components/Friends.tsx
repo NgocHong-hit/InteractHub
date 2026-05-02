@@ -142,12 +142,8 @@ const Friends = ({ userData }: any) => {
 
       <div className="max-w-7xl mx-auto py-8 px-4">
         {/* HEADER */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900">Bạn bè</h2>
-            <p className="text-gray-500 font-medium">Kết nối và mở rộng vòng bạn bè của bạn</p>
-          </div>
-          <div className="relative w-full md:w-80">
+        <div className="flex flex-col md:flex-row justify-between items-center mt-12 mb-8 gap-4">
+          <div className="relative w-full md:w-70">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"

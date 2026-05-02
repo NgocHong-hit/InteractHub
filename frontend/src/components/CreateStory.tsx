@@ -4,16 +4,23 @@ import { Rnd } from 'react-rnd'; // Thư viện kéo thả & resize
 import { useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
 import storyAPI from '../api/storyAPI';
+import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 
 const CreateStory = ({ userData = {}, setView }: any) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [text, setText] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [bgGradient, setBgGradient] = useState("from-purple-500 to-pink-500");
   const [isSharing, setIsSharing] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const currentUser = user || userData;
+  const profileName = 
+    currentUser?.fullName ||
+    currentUser?.userName || 
+    "Người dùng";
   const gradients = [
     "from-purple-500 to-pink-500", "from-blue-400 to-emerald-400",
     "from-orange-400 to-red-500", "from-indigo-600 to-blue-700",
@@ -101,9 +108,9 @@ const CreateStory = ({ userData = {}, setView }: any) => {
           <div className="flex-1 overflow-y-auto p-5 space-y-8 no-scrollbar">
             {/* User Info */}
             <div className="flex items-center gap-3">
-              <img src={userData?.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=User"} className="w-12 h-12 rounded-full border" alt="me" />
+              <img src={currentUser?.avatarUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=User"} className="w-12 h-12 rounded-full border" alt="me" />
               <div>
-                <p className="font-bold">{userData?.name || "Người dùng"}</p>
+                <p className="font-bold">{profileName}</p>
                 <span className="text-[11px] text-gray-500">Công khai</span>
               </div>
             </div>
@@ -140,7 +147,11 @@ const CreateStory = ({ userData = {}, setView }: any) => {
           </div>
 
           <div className="p-4 border-t bg-white flex gap-2">
-            <button onClick={() => navigate('/')} className="flex-1 py-3 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-lg transition-all">Hủy</button>
+            <button className="flex-1 p-0 overflow-hidden rounded-lg">
+              <Link to="/homepages" className="w-full h-full py-3 block text-gray-500 font-bold bg-gray-100">
+                Hủy
+              </Link>
+            </button>          
             <button onClick={handleShare} disabled={isSharing} className="flex-[2] py-3 bg-[#0866FF] hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold rounded-xl text-sm transition-all">
               {isSharing ? 'Đang chia sẻ...' : 'Chia sẻ'}
             </button>
@@ -185,8 +196,8 @@ const CreateStory = ({ userData = {}, setView }: any) => {
 
               {/* Header cố định */}
               <div className="absolute top-6 left-4 flex items-center gap-2 z-50 pointer-events-none">
-                <img src={userData?.avatar} className="w-8 h-8 rounded-full border border-white" alt="" />
-                <span className="text-white text-[11px] font-bold">{userData?.name}</span>
+                <img src={currentUser?.avatarUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=User"} className="w-8 h-8 rounded-full border border-white" alt="" />
+                <span className="text-white text-[11px] font-bold">{profileName}</span>
               </div>
             </div>
 
