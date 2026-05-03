@@ -49,3 +49,13 @@ export interface Notification {
   isRead: boolean;
   createdAt: string;
 }
+
+export interface SharedPost {
+  id: number;
+  userId: number;
+  user: User;
+  postId: number;
+  post: Post;
+  content?: string;
+  createdAt: string;
+}

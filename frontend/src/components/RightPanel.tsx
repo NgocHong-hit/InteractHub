@@ -1,5 +1,6 @@
 import { Video, Search, ChevronRight } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
 
@@ -8,14 +9,16 @@ const getAvatarUrl = (url?: string, seed?: string) => {
   return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed || 'user'}`;
 };
 
-function RightPanel({ contacts, userData }: any) {
+function RightPanel({ contacts }: any) {
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
+  
   const storedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
   let persistedUser = null;
   if (storedUser) {
     try { persistedUser = JSON.parse(storedUser); } catch { /* ignore malformed data */ }
   }
-  const currentUser = userData || persistedUser;
+  const currentUser = authUser || persistedUser;
   const profileName = currentUser?.fullName || currentUser?.userName || 'Người dùng';
   const profileHandle = currentUser?.userName ? `@${currentUser.userName}` : '@guest';
   const profileAvatar = getAvatarUrl(currentUser?.avatarUrl, currentUser?.userName || 'User');

@@ -29,5 +29,8 @@ namespace InteractHub.API.Models
         
         [JsonIgnore]
         public virtual ICollection<Friendship> ReceivedFriendRequests { get; set; } = new List<Friendship>();
+
+        [JsonIgnore]
+        public virtual ICollection<SharedPost> SharedPosts { get; set; } = new List<SharedPost>();
     }
 }

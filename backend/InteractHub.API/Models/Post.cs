@@ -15,4 +15,5 @@ public class Post
     public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
     public virtual ICollection<Like> Likes { get; set; } = new List<Like>();
     public virtual ICollection<PostHashtag> PostHashtags { get; set; } = new List<PostHashtag>();
+    public virtual ICollection<SharedPost> SharedPosts { get; set; } = new List<SharedPost>();
 }

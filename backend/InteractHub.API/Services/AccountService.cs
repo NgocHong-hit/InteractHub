@@ -42,6 +42,7 @@ namespace InteractHub.API.Services
                 userName = user.UserName,
                 email = user.Email,
                 role = "User",
+                avatarUrl = user.AvatarUrl,
                 // CẬP NHẬT: Truyền roles vào đây
                 token = _tokenService.CreateToken(user, roles) 
             };
@@ -70,6 +71,7 @@ namespace InteractHub.API.Services
                 address = user.Address,
                 gender = user.Gender,
                 dateOfBirth = user.DateOfBirth,
+                avatarUrl = user.AvatarUrl,
                 role = userRole, // Trả thêm trường này để Frontend dễ check if/else
                 // CẬP NHẬT: Truyền roles vào để Token có "dấu mộc" Admin
                 token = _tokenService.CreateToken(user, roles) 

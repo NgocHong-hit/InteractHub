@@ -105,6 +105,9 @@ builder.Services.AddScoped<IFriendshipService, FriendshipService>();
 builder.Services.AddScoped<IStoryService, StoryService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
+builder.Services.AddScoped<ISharedPostRepository, SharedPostRepository>();
+builder.Services.AddScoped<SharedPostService>();
+
 // Background Service dọn dẹp Story hết hạn
 builder.Services.AddHostedService<StoryCleanupService>();
 

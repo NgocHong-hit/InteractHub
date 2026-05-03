@@ -11,6 +11,8 @@ export interface LoginResponse {
   email?: string;
   userName?: string;
   fullName?: string;
+  avatarUrl?: string;
+  id?: number;
 }
 
 export interface RegisterRequest {

@@ -83,11 +83,11 @@ const Homepages = () => {
             {loadingStories ? (
               <div className="flex items-center justify-center py-10">Đang tải tin...</div>
             ) : (
-              <Feed posts={posts} stories={stories} userData={userData} />
+              <Feed stories={stories} />
             )}
           </div>
 
-          <RightPanel contacts={contacts} userData={userData} />
+          <RightPanel contacts={contacts} />
         </div>
       </div>
     </div>

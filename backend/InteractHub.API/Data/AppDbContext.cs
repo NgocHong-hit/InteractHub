@@ -18,6 +18,7 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<int>, int>
     public DbSet<PostHashtag> PostHashtags { get; set; }
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<Report> Reports { get; set; }
+    public DbSet<SharedPost> SharedPosts { get; set; }
 
    protected override void OnModelCreating(ModelBuilder modelBuilder)
 {
@@ -74,6 +75,19 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<int>, int>
         .HasOne(n => n.Sender)
         .WithMany()
         .HasForeignKey(n => n.SenderId)
+        .OnDelete(DeleteBehavior.Restrict);
+
+    // 5. Cấu hình SharedPost — tránh lỗi cascade path
+    modelBuilder.Entity<SharedPost>()
+        .HasOne(sp => sp.User)
+        .WithMany(u => u.SharedPosts)
+        .HasForeignKey(sp => sp.UserId)
+        .OnDelete(DeleteBehavior.Restrict);
+
+    modelBuilder.Entity<SharedPost>()
+        .HasOne(sp => sp.Post)
+        .WithMany(p => p.SharedPosts)
+        .HasForeignKey(sp => sp.PostId)
         .OnDelete(DeleteBehavior.Restrict);
         
     // Tạo sẵn 2 quyền trong DB

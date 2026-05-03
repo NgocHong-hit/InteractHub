@@ -16,25 +16,31 @@ import {
   Calendar,
   Camera,
   Flag,
-  Heart,
   Mail,
   Phone,
-  Edit2
+  Edit2,
+  Share2,
+  X
 } from 'lucide-react';
 import profileAPI from '../api/profileAPI';
 import postsAPI from '../api/postsAPI';
 import likesAPI from '../api/likesAPI';
 import commentsAPI from '../api/commentsAPI';
 import friendAPI from '../api/friendAPI';
+import shareAPI from '../api/shareAPI';
 import type { UserProfile } from '../api/profileAPI';
-import type { Post, Comment } from '../types';
+import type { Post, Comment, SharedPost } from '../types';
+import SharePostModal from './SharePostModal';
+import EditSharedPostModal from './EditSharedPostModal';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
 
 const Profile: React.FC = () => {
   const { userId: paramUserId } = useParams<{ userId?: string }>();
   const navigate = useNavigate();
+  const { user: authUser, updateUser } = useAuth();
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
@@ -52,6 +58,16 @@ const Profile: React.FC = () => {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [friendStatus, setFriendStatus] = useState<'none' | 'sent' | 'received' | 'friends'>('none');
   const [friendActionLoading, setFriendActionLoading] = useState(false);
+
+  // --- States cho Shared Posts ---
+  const [sharedPosts, setSharedPosts] = useState<SharedPost[]>([]);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [postToShare, setPostToShare] = useState<Post | null>(null);
+
+  const [editingSharedPost, setEditingSharedPost] = useState<SharedPost | null>(null);
+  const [isEditSharedModalOpen, setIsEditSharedModalOpen] = useState(false);
+  const [visibleSharedPostMenu, setVisibleSharedPostMenu] = useState<number | null>(null);
+  const sharedMenuButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
 
   // Xác định có phải profile của mình không
   const isOwnProfile = !paramUserId || (currentUser && Number(paramUserId) === currentUser.id);
@@ -90,8 +106,12 @@ const Profile: React.FC = () => {
 
   const fetchPosts = async (uid: number) => {
     try {
-      const userPosts = await postsAPI.getPostsByUserId(uid);
+      const [userPosts, userSharedPosts] = await Promise.all([
+        postsAPI.getPostsByUserId(uid),
+        shareAPI.getSharedPostsByUserId(uid)
+      ]);
       setPosts(userPosts);
+      setSharedPosts(userSharedPosts);
     } catch {
     }
   };
@@ -105,12 +125,10 @@ const Profile: React.FC = () => {
     try {
       const result = await profileAPI.uploadAvatar(file);
       setUserProfile(prev => prev ? { ...prev, avatarUrl: result.avatarUrl } : prev);
-      // Cập nhật localStorage
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        const parsed = JSON.parse(storedUser);
-        parsed.avatarUrl = result.avatarUrl;
-        localStorage.setItem('user', JSON.stringify(parsed));
+      
+      // Đồng bộ ảnh mới vào AuthContext (để Navbar và mọi nơi khác tự update)
+      if (authUser) {
+        updateUser({ ...authUser, avatarUrl: result.avatarUrl });
       }
     } catch {
       alert('Không thể cập nhật ảnh đại diện');
@@ -155,6 +173,53 @@ const Profile: React.FC = () => {
       setVisiblePostMenu(null);
     } catch {
       alert('Không thể xóa bài viết');
+    }
+  };
+
+  const handleOpenShareModal = (post: Post) => {
+    setPostToShare(post);
+    setIsShareModalOpen(true);
+  };
+
+  const handleShareSubmit = async (content: string) => {
+    if (!postToShare || !userProfile) return;
+    try {
+      await shareAPI.sharePost({ postId: postToShare.id, content });
+      await fetchPosts(userProfile.id);
+      alert('Chia sẻ thành công!');
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Có lỗi xảy ra khi chia sẻ');
+    }
+  };
+
+  const handleDeleteSharedPost = async (id: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa bài chia sẻ này?')) return;
+    try {
+      await shareAPI.deleteSharedPost(id);
+      setSharedPosts(prev => prev.filter(sp => sp.id !== id));
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Không thể xóa bài chia sẻ');
+    }
+  };
+
+  const handleEditSharedPost = (sharedPostId: number) => {
+    const sp = sharedPosts.find(s => s.id === sharedPostId);
+    if (sp) {
+      setEditingSharedPost(sp);
+      setIsEditSharedModalOpen(true);
+      setVisibleSharedPostMenu(null);
+    }
+  };
+
+  const handleUpdateSharedPost = async (id: number, content: string) => {
+    if (!userProfile) return;
+    try {
+      await shareAPI.updateSharedPost(id, content);
+      await fetchPosts(userProfile.id);
+      setIsEditSharedModalOpen(false);
+      setEditingSharedPost(null);
+    } catch {
+      alert('Không thể cập nhật bài chia sẻ');
     }
   };
 
@@ -221,6 +286,11 @@ const Profile: React.FC = () => {
   const displayName = userProfile?.fullName || userProfile?.userName || "bạn";
   const firstName = displayName.split(' ').pop();
   const avatarSrc = getAvatarUrl(userProfile?.avatarUrl, userProfile?.userName);
+
+  const allFeedItems = [
+    ...posts.map(p => ({ type: 'post', data: p, date: new Date(p.createdAt).getTime() })),
+    ...sharedPosts.map(sp => ({ type: 'shared', data: sp, date: new Date(sp.createdAt).getTime() }))
+  ].sort((a, b) => b.date - a.date);
 
   return (
     <div className="min-h-screen bg-[#F0F2F5] font-sans text-[#1C1E21]">
@@ -435,75 +505,121 @@ const Profile: React.FC = () => {
             />
 
             {/* Danh sách bài viết */}
-            {posts.length === 0 ? (
+            {allFeedItems.length === 0 ? (
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center">
                 <p className="text-gray-400 font-medium">Chưa có bài viết nào</p>
               </div>
             ) : (
-              posts.map(post => (
-                <div key={post.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                  <div className="p-4 flex justify-between items-start">
-                    <div className="flex gap-3">
-                      <img 
-                        src={getAvatarUrl(post.user?.avatarUrl, post.user?.userName)} 
-                        className="w-10 h-10 rounded-full object-cover cursor-pointer" 
-                        alt="author" 
-                        onClick={() => navigate(`/profile/${post.userId}`)}
-                      />
-                      <div>
-                        <h4 
-                          className="font-bold text-[15px] hover:underline cursor-pointer"
-                          onClick={() => navigate(`/profile/${post.userId}`)}
-                        >
-                          {post.user?.fullName || post.user?.userName}
-                        </h4>
-                        <p className="text-[13px] text-gray-500">{new Date(post.createdAt).toLocaleString('vi-VN')} • 🌏</p>
+              allFeedItems.map((item: any) => {
+                const isShared = item.type === 'shared';
+                const post = isShared ? item.data.post : item.data;
+                if (!post) return null; // Safe check
+                
+                const sharedPost = isShared ? item.data : null;
+                const displayId = isShared ? `shared-${sharedPost.id}` : `post-${post.id}`;
+                const hasLiked = post.likes?.some((l: any) => l.userId === currentUser?.id);
+
+                return (
+                <div key={displayId} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  {/* Header của Share (nếu là bài share) */}
+                  {isShared && (
+                    <div className="p-3 pb-0">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <Share2 size={14} />
+                          <span className="font-semibold cursor-pointer hover:underline text-gray-800" onClick={() => navigate(`/profile/${sharedPost.userId}`)}>
+                            {sharedPost.user?.fullName || sharedPost.user?.userName}
+                          </span>
+                          <span>đã chia sẻ một bài viết</span>
+                        </div>
+                        {sharedPost.userId === currentUser?.id && (
+                          <div className="relative">
+                            <button 
+                              ref={(el) => { if (el) sharedMenuButtonRefs.current[sharedPost.id] = el; }}
+                              onClick={() => setVisibleSharedPostMenu(visibleSharedPostMenu === sharedPost.id ? null : sharedPost.id)}
+                              className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                              <MoreHorizontal size={18} />
+                            </button>
+                            <PostMenu
+                              postId={sharedPost.id}
+                              isVisible={visibleSharedPostMenu === sharedPost.id}
+                              onClose={() => setVisibleSharedPostMenu(null)}
+                              onEdit={handleEditSharedPost}
+                              onDelete={handleDeleteSharedPost}
+                              canEdit={true}
+                              buttonRef={{ current: sharedMenuButtonRefs.current[sharedPost.id] || null }}
+                            />
+                          </div>
+                        )}
                       </div>
+                      {sharedPost.content && (
+                        <p className="text-[15px] mb-2 px-1">{sharedPost.content}</p>
+                      )}
                     </div>
-                    {isOwnProfile && (
-                      <div className="relative">
-                        <button 
-                          ref={el => { if (el) menuButtonRefs.current[post.id] = el; }}
-                          onClick={() => setVisiblePostMenu(visiblePostMenu === post.id ? null : post.id)}
-                          className="p-2 hover:bg-gray-100 rounded-full text-gray-500"
-                        >
-                          <MoreHorizontal size={20}/>
-                        </button>
+                  )}
+
+                  <div className={isShared ? "mx-3 mb-3 border border-gray-200 rounded-xl overflow-hidden bg-gray-50/50" : ""}>
+                    <div className="p-4 flex justify-between items-start">
+                      <div className="flex gap-3">
+                        <img 
+                          src={getAvatarUrl(post.user?.avatarUrl, post.user?.userName)} 
+                          className="w-10 h-10 rounded-full object-cover cursor-pointer" 
+                          alt="author" 
+                          onClick={() => navigate(`/profile/${post.userId}`)}
+                        />
+                        <div>
+                          <h4 
+                            className="font-bold text-[15px] hover:underline cursor-pointer"
+                            onClick={() => navigate(`/profile/${post.userId}`)}
+                          >
+                            {post.user?.fullName || post.user?.userName}
+                          </h4>
+                          <p className="text-[13px] text-gray-500">{new Date(post.createdAt).toLocaleString('vi-VN')} • 🌏</p>
+                        </div>
+                      </div>
+                      {isOwnProfile && !isShared && (
+                        <div className="relative">
+                          <button 
+                            ref={el => { if (el) menuButtonRefs.current[post.id] = el; }}
+                            onClick={() => setVisiblePostMenu(visiblePostMenu === post.id ? null : post.id)}
+                            className="p-2 hover:bg-gray-100 rounded-full text-gray-500"
+                          >
+                            <MoreHorizontal size={20}/>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="px-4 pb-3 text-[15px] leading-relaxed text-gray-900">
+                      {post.content}
+                    </div>
+
+                    {/* Hashtag badges */}
+                    {post.postHashtags && post.postHashtags.length > 0 && (
+                      <div className="px-4 pb-3 flex flex-wrap gap-1.5">
+                        {post.postHashtags.map((ph: any, idx: number) => (
+                          <button
+                            key={idx}
+                            onClick={() => navigate(`/hashtags?tag=${encodeURIComponent(ph.hashtag?.name || '')}`)}
+                            className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-semibold border border-blue-100 hover:bg-blue-100 transition-colors cursor-pointer"
+                          >
+                            {ph.hashtag?.name}
+                          </button>
+                        ))}
                       </div>
                     )}
+
+                    {post.imageUrl && (
+                      <img src={`${API_BASE_URL}${post.imageUrl}`} alt="Post image" className="w-full max-h-[450px] object-cover border-y border-gray-50" />
+                    )}
                   </div>
-
-                  <div className="px-4 pb-3 text-[15px] leading-relaxed text-gray-900">
-                    {post.content}
-                  </div>
-
-                  {/* Hashtag badges */}
-                  {post.postHashtags && post.postHashtags.length > 0 && (
-                    <div className="px-4 pb-3 flex flex-wrap gap-1.5">
-                      {post.postHashtags.map((ph: any, idx: number) => (
-                        <button
-                          key={idx}
-                          onClick={() => navigate(`/hashtags?tag=${encodeURIComponent(ph.hashtag?.name || '')}`)}
-                          className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-semibold border border-blue-100 hover:bg-blue-100 transition-colors cursor-pointer"
-                        >
-                          {ph.hashtag?.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {post.imageUrl && (
-                    <img src={`${API_BASE_URL}${post.imageUrl}`} alt="Post image" className="w-full max-h-[450px] object-cover border-y border-gray-50" />
-                  )}
 
                   <div className="px-4 py-2.5 flex justify-between items-center text-sm text-[#65676B] border-t border-gray-50">
                     <div className="flex items-center gap-1.5 cursor-pointer">
                       <div className="flex -space-x-1">
                         <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-white ring-2 ring-white">
                           <ThumbsUp size={10} className="fill-current"/>
-                        </div>
-                        <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white ring-2 ring-white">
-                          <Heart size={10} className="fill-current"/>
                         </div>
                       </div>
                       <span className="hover:underline font-medium">{post.likes?.length || 0}</span>
@@ -516,7 +632,9 @@ const Profile: React.FC = () => {
                   <div className="mx-4 mb-2 p-1 flex gap-1 border-t border-gray-100">
                     <button 
                       onClick={() => handleLike(post.id)}
-                      className="flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg font-bold text-[15px] hover:bg-gray-100 transition-colors text-[#65676B]"
+                      className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg font-bold text-[15px] hover:bg-gray-100 transition-colors ${
+                        hasLiked ? 'text-[#0866FF]' : 'text-[#65676B]'
+                      }`}
                     >
                       <ThumbsUp size={20} /> Thích
                     </button>
@@ -525,6 +643,12 @@ const Profile: React.FC = () => {
                       className="flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg font-bold text-[15px] hover:bg-gray-100 transition-colors text-[#65676B]"
                     >
                       <MessageSquare size={20} /> Bình luận
+                    </button>
+                    <button 
+                      onClick={() => handleOpenShareModal(post)}
+                      className="flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg font-bold text-[15px] hover:bg-gray-100 transition-colors text-[#65676B]"
+                    >
+                      <Share2 size={20} /> Chia sẻ
                     </button>
                   </div>
 
@@ -587,7 +711,8 @@ const Profile: React.FC = () => {
                     </div>
                   )}
                 </div>
-              ))
+              );
+              })
             )}
           </div>
         </div>
@@ -614,6 +739,19 @@ const Profile: React.FC = () => {
           />
         </>
       )}
+      <SharePostModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        postToShare={postToShare}
+        onShare={handleShareSubmit}
+      />
+
+      <EditSharedPostModal
+        isOpen={isEditSharedModalOpen}
+        onClose={() => setIsEditSharedModalOpen(false)}
+        sharedPost={editingSharedPost}
+        onSave={handleUpdateSharedPost}
+      />
     </div>
   );
 };

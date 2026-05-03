@@ -42,10 +42,13 @@ interface RequestItem {
 
 type ActiveTab = 'suggestions' | 'friends' | 'requests' | 'sent';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
+
 // ─── Avatar helper ────────────────────────────────────────────────────────────
 const Avatar = ({ url, seed, size = 'lg' }: { url?: string; seed?: string; size?: 'sm' | 'lg' }) => {
   const cls = size === 'lg' ? 'w-24 h-24' : 'w-10 h-10';
-  const src = url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed ?? 'user'}`;
+  const formattedUrl = url ? (url.startsWith('http') ? url : `${API_BASE_URL}${url}`) : undefined;
+  const src = formattedUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed ?? 'user'}`;
   return <img src={src} className={`${cls} rounded-full object-cover`} alt="avatar" />;
 };
 

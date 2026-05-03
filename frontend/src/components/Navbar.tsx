@@ -7,6 +7,7 @@ import {
 import * as signalR from '@microsoft/signalr';
 import notificationAPI from '../api/notificationAPI';
 import type { NotificationData } from '../api/notificationAPI';
+import { useAuth } from '../context/AuthContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
 
@@ -102,13 +103,16 @@ const Navbar = ({ userData }: any) => {
   const [loading, setLoading] = useState(false);
   const connectionRef = useRef<signalR.HubConnection | null>(null);
 
-  // Get current user data for profile avatar
+  // Lấy current user từ AuthContext (để tự động cập nhật khi đổi avatar)
+  const { user: authUser } = useAuth();
+  
+  // Vẫn giữ fallback lấy từ props userData hoặc localStorage cho an toàn
   const storedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
   let persistedUser = null;
   if (storedUser) {
     try { persistedUser = JSON.parse(storedUser); } catch { /* ignore malformed data */ }
   }
-  const currentUser = userData || persistedUser;
+  const currentUser = authUser || userData || persistedUser;
   const profileAvatar = getAvatarUrl(currentUser?.avatarUrl, currentUser?.userName || 'User');
 
   // Fetch thông báo từ API

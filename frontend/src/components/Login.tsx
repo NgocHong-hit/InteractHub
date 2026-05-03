@@ -22,10 +22,11 @@ const App: React.FC = () => {
       if (response.token) {
         // Extract user data from response
         const userData = {
-          id: 0, // ID will be set from token if needed
+          id: response.id || 0, // ID should come from response now
           userName: response.userName || '',
           fullName: response.fullName,
           email: response.email,
+          avatarUrl: response.avatarUrl,
         };
         
         // Use AuthContext's login method to properly store user data
