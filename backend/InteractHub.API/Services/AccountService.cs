@@ -91,5 +91,32 @@ namespace InteractHub.API.Services
                 var result = await _userManager.ChangePasswordAsync(user, dto.OldPassword, dto.NewPassword);
                 return result;
             }
+
+        public async Task<object> ForgotPasswordAsync(string email)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                return new { success = false, message = "Email không tồn tại trong hệ thống." };
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            
+            // Trong môi trường thực tế, gửi email ở đây.
+            // Vì không có email service, trả token về luôn để Frontend xử lý.
+            return new { success = true, message = "Đã lấy mã khôi phục", token = token };
+        }
+
+        public async Task<IdentityResult> ResetPasswordAsync(ResetPasswordDto dto)
+        {
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+            if (user == null)
+            {
+                return IdentityResult.Failed(new IdentityError { Description = "Email không hợp lệ." });
+            }
+
+            var result = await _userManager.ResetPasswordAsync(user, dto.Token, dto.NewPassword);
+            return result;
+        }
     }
 }

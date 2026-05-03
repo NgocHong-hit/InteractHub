@@ -7,5 +7,8 @@ namespace InteractHub.API.Interfaces
     {
         Task<object> RegisterAsync(RegisterDto registerDto);
         Task<object> LoginAsync(LoginDto loginDto);
-        Task<IdentityResult> ChangePasswordAsync(string userId, ChangePasswordDto changePasswordDto);    }
+        Task<IdentityResult> ChangePasswordAsync(string userId, ChangePasswordDto changePasswordDto);
+        Task<object> ForgotPasswordAsync(string email);
+        Task<IdentityResult> ResetPasswordAsync(ResetPasswordDto resetPasswordDto);
+    }
 }

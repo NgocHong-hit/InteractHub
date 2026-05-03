@@ -56,7 +56,17 @@ const accountAPI = {
     } catch (error: any) {
       throw error;
     }
-  },    
+  },
+
+  forgotPassword: async (email: string) => {
+    const { data } = await axiosClient.post('/account/forgot-password', { email });
+    return data;
+  },
+
+  resetPassword: async (payload: any) => {
+    const { data } = await axiosClient.post('/account/reset-password', payload);
+    return data;
+  },
 };
 
 export default accountAPI;

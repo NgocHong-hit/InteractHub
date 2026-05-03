@@ -4,9 +4,11 @@ import { LogIn, Mail, Lock, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import accountAPI from '../api/accountAPI';
 import { useAuth } from '../context/AuthContext';
+import ForgotPasswordModal from './ForgotPasswordModal';
 
 const App: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm();
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -124,7 +126,13 @@ const App: React.FC = () => {
             </div>
 
             <div className="text-right">
-              <a href="#" className="text-xs font-bold text-[#0866FF] hover:underline">Forgot Password?</a>
+              <button 
+                type="button" 
+                onClick={() => setIsForgotModalOpen(true)}
+                className="text-xs font-bold text-[#0866FF] hover:underline"
+              >
+                Forgot Password?
+              </button>
             </div>
 
             <button 
@@ -148,6 +156,11 @@ const App: React.FC = () => {
 
         </div>
       </div> 
+      
+      <ForgotPasswordModal 
+        isOpen={isForgotModalOpen} 
+        onClose={() => setIsForgotModalOpen(false)} 
+      />
     </div>
   );
 };

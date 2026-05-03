@@ -61,6 +61,29 @@ namespace InteractHub.API.Controllers
             return BadRequest(result.Errors);
         }
 
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            
+            var result = await _accountService.ForgotPasswordAsync(dto.Email);
+            return Ok(result);
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var result = await _accountService.ResetPasswordAsync(dto);
+            if (result.Succeeded)
+            {
+                return Ok(new { success = true, message = "Khôi phục mật khẩu thành công." });
+            }
+
+            return BadRequest(new { success = false, message = "Không thể khôi phục mật khẩu.", errors = result.Errors });
+        }
+
         [HttpGet("admin-only")]
         [Authorize(Roles = "Admin")]
         public IActionResult GetAdminDashboard()
