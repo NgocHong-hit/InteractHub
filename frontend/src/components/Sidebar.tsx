@@ -35,9 +35,7 @@ const Sidebar = () => {
         label="Hashtag" 
         to="/hashtags" 
       />      
-      <div className="pt-4 pb-2 px-3 text-xs font-bold text-gray-400 uppercase tracking-widest">Lối tắt</div>
-      <SidebarItem icon={<div className="w-6 h-6 rounded bg-blue-100 flex items-center justify-center text-[10px] text-blue-600 font-bold">UI</div>} label="UI/UX Designers" to="/shortcut-ui" />
-      <SidebarItem icon={<div className="w-6 h-6 rounded bg-blue-100 flex items-center justify-center text-[10px] text-blue-600 font-bold">VN</div>} label="React Việt Nam" to="/shortcut-vn" />
+      
       
       <hr className="my-4 border-gray-200" />
 

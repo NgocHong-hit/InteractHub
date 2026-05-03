@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { X, Settings, ChevronLeft, Type, Palette, Plus, Send, Globe, ChevronDown, Image as ImageIcon } from 'lucide-react';
-import { Rnd } from 'react-rnd'; // Thư viện kéo thả & resize
+import { Rnd } from 'react-rnd';
 import { useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
 import storyAPI from '../api/storyAPI';
@@ -14,11 +14,22 @@ const getAvatarUrl = (url?: string, seed?: string) => {
   return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed || 'user'}`;
 };
 
+// Bảng ánh xạ Tailwind gradient class → màu CSS thật
+const gradientColorMap: Record<string, [string, string]> = {
+  "from-purple-500 to-pink-500": ["#a855f7", "#ec4899"],
+  "from-blue-400 to-emerald-400": ["#60a5fa", "#34d399"],
+  "from-orange-400 to-red-500": ["#fb923c", "#ef4444"],
+  "from-indigo-600 to-blue-700": ["#4f46e5", "#1d4ed8"],
+  "from-gray-900 to-gray-600": ["#111827", "#4b5563"],
+  "from-rose-400 to-orange-300": ["#fb7185", "#fdba74"],
+};
+
 const CreateStory = ({ userData = {}, setView }: any) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [text, setText] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [bgGradient, setBgGradient] = useState("from-purple-500 to-pink-500");
   const [isSharing, setIsSharing] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -36,9 +47,126 @@ const CreateStory = ({ userData = {}, setView }: any) => {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const url = URL.createObjectURL(e.target.files[0]);
+      const file = e.target.files[0];
+      const url = URL.createObjectURL(file);
       setSelectedImage(url);
+      setSelectedFile(file);
     }
+  };
+
+  // Vẽ story bằng Canvas API gốc — không phụ thuộc html2canvas
+  const generateStoryImage = (): Promise<Blob> => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const W = 1080;
+        const H = 1920;
+        const canvas = document.createElement('canvas');
+        canvas.width = W;
+        canvas.height = H;
+        const ctx = canvas.getContext('2d')!;
+
+        // 1. Vẽ nền gradient
+        const colors = gradientColorMap[bgGradient] || ["#a855f7", "#ec4899"];
+        const gradient = ctx.createLinearGradient(0, 0, W, H);
+        gradient.addColorStop(0, colors[0]);
+        gradient.addColorStop(1, colors[1]);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, W, H);
+
+        // 2. Vẽ ảnh nếu có
+        if (selectedImage) {
+          await new Promise<void>((imgResolve, imgReject) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              // Vẽ ảnh cover vào nửa trên
+              const imgAspect = img.width / img.height;
+              const targetH = H * 0.5;
+              const targetW = W;
+              let drawW = targetW;
+              let drawH = targetW / imgAspect;
+              if (drawH < targetH) {
+                drawH = targetH;
+                drawW = targetH * imgAspect;
+              }
+              const drawX = (targetW - drawW) / 2;
+              const drawY = (targetH - drawH) / 2;
+              ctx.drawImage(img, drawX, drawY, drawW, drawH);
+              imgResolve();
+            };
+            img.onerror = () => imgResolve(); // Bỏ qua lỗi ảnh, vẫn tạo story
+            img.src = selectedImage;
+          });
+        }
+
+        // 3. Vẽ text nếu có
+        if (text) {
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = 'white';
+          ctx.shadowColor = 'rgba(0,0,0,0.5)';
+          ctx.shadowBlur = 15;
+
+          // Tính font size tự động
+          let fontSize = 72;
+          ctx.font = `bold ${fontSize}px "Segoe UI", Arial, sans-serif`;
+          
+          // Chia nhỏ text thành các dòng
+          const maxWidth = W - 120;
+          const words = text.split(/\s+/);
+          let lines: string[] = [];
+          let currentLine = '';
+          
+          for (const word of words) {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            if (ctx.measureText(testLine).width > maxWidth && currentLine) {
+              lines.push(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
+          }
+          if (currentLine) lines.push(currentLine);
+
+          // Giảm font nếu quá nhiều dòng
+          if (lines.length > 6) fontSize = 48;
+          else if (lines.length > 4) fontSize = 56;
+          ctx.font = `bold ${fontSize}px "Segoe UI", Arial, sans-serif`;
+          
+          // Tính lại lines với font mới
+          lines = [];
+          currentLine = '';
+          for (const word of words) {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            if (ctx.measureText(testLine).width > maxWidth && currentLine) {
+              lines.push(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
+          }
+          if (currentLine) lines.push(currentLine);
+
+          const lineHeight = fontSize * 1.3;
+          const totalTextH = lines.length * lineHeight;
+          const textY = selectedImage ? (H * 0.5 + (H * 0.5 - totalTextH) / 2) : (H - totalTextH) / 2;
+
+          lines.forEach((line, i) => {
+            ctx.fillText(line, W / 2, textY + i * lineHeight + lineHeight / 2);
+          });
+          ctx.restore();
+        }
+
+        // 4. Xuất ra blob
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Không thể tạo hình ảnh"));
+        }, 'image/jpeg', 0.92);
+      } catch (err) {
+        reject(err);
+      }
+    });
   };
 
   const handleShare = async () => {
@@ -49,35 +177,23 @@ const CreateStory = ({ userData = {}, setView }: any) => {
 
     setIsSharing(true);
     try {
-      // Tạo object để gửi dữ liệu
-      const storyData: any = {
-        content: text || undefined,
-        mediaUrl: undefined,
-      };
+      const blob = await generateStoryImage();
 
-      // Nếu có hình ảnh, sử dụng URL object (tạm thời)
-      // Trong thực tế, nên upload lên server trước rồi lấy URL
-      if (selectedImage) {
-        // Hiện tại chỉ gửi blob URL, backend có thể xử lý hoặc cập nhật sau
-        storyData.mediaUrl = selectedImage;
-      }
+      const formData = new FormData();
+      formData.append('Image', blob, 'story.jpg');
 
-
-      // Gọi API tạo story
-      const response = await storyAPI.createStory(storyData);
+      await storyAPI.createStory(formData);
       
-      // Hiển thị thông báo thành công
       setShowSuccessMessage(true);
-      
-      // Reset form
       setText("");
       setSelectedImage(null);
+      setSelectedFile(null);
       
-      // Tự động redirect sau 2 giây
       setTimeout(() => {
         navigate('/homepages');
       }, 2000);
-    } catch {
+    } catch (error) {
+      console.error('Story share error:', error);
       alert("Không thể chia sẻ tin, vui lòng thử lại.");
     } finally {
       setIsSharing(false);

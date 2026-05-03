@@ -21,8 +21,12 @@ export interface StoryResponse {
 
 const storyAPI = {
   // POST api/stories
-  createStory: async (data: CreateStoryRequest) => {
-    const response = await axiosClient.post('/stories', data);
+  createStory: async (data: FormData) => {
+    const response = await axiosClient.post('/stories', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 

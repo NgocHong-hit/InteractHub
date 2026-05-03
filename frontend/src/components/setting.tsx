@@ -126,6 +126,13 @@ const App: React.FC = () => {
     return `${date.getDate()} tháng ${date.getMonth() + 1}, ${date.getFullYear()}`;
   };
 
+  const getGenderDisplay = (gender?: string) => {
+    if (gender === 'Male') return 'Nam';
+    if (gender === 'Female') return 'Nữ';
+    if (gender === 'Other') return 'Khác';
+    return gender || "Chưa xác định";
+  };
+
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
 
   // --- ĐÃ NHÚNG: Logic xử lý hiển thị linh hoạt ---
@@ -323,9 +330,9 @@ const App: React.FC = () => {
                             className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                           >
                             <option value="">Chưa xác định</option>
-                            <option value="Nam">Nam</option>
-                            <option value="Nữ">Nữ</option>
-                            <option value="Khác">Khác</option>
+                            <option value="Male">Nam</option>
+                            <option value="Female">Nữ</option>
+                            <option value="Other">Khác</option>
                           </select>
                         </div>
 
@@ -513,7 +520,7 @@ const App: React.FC = () => {
                     {/* ĐÃ NHÚNG: Dữ liệu thật từ DB vào Profile Intro */}
                     <DetailRow icon={<MapPin size={20} className="text-gray-500" />} text="Sống ở " bold={userProfile?.address || "Chưa cập nhật"} />
                     <DetailRow icon={<Calendar size={20} className="text-gray-500" />} text={formatBirthday(userProfile?.dateOfBirth)} />
-                    <DetailRow icon={<Users size={20} className="text-gray-500" />} text={userProfile?.gender || "Chưa xác định"} />
+                    <DetailRow icon={<Users size={20} className="text-gray-500" />} text={getGenderDisplay(userProfile?.gender)} />
                   </div>
                 </div>
               </div>

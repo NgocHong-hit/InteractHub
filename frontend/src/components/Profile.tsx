@@ -267,9 +267,21 @@ const Profile: React.FC = () => {
     return `${date.getDate()} tháng ${date.getMonth() + 1}, ${date.getFullYear()}`;
   };
 
+  const getGenderDisplay = (gender?: string) => {
+    if (gender === 'Male') return 'Nam';
+    if (gender === 'Female') return 'Nữ';
+    if (gender === 'Other') return 'Khác';
+    return gender || "Chưa xác định";
+  };
+
   const getAvatarUrl = (url?: string, seed?: string) => {
     if (url) return url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
     return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed || 'user'}`;
+  };
+
+  const formatVNTime = (dateString: string) => {
+    const utcDate = new Date(dateString);
+    return utcDate.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
   };
 
   if (loading) {
@@ -462,7 +474,7 @@ const Profile: React.FC = () => {
                 />
                 <DetailRow 
                     icon={<Users size={20} className="text-gray-500" />} 
-                    text={`Giới tính: ${userProfile?.gender || "Chưa xác định"}`} 
+                    text={`Giới tính: ${getGenderDisplay(userProfile?.gender)}`} 
                 />
               </div>
             </div>
@@ -575,7 +587,7 @@ const Profile: React.FC = () => {
                           >
                             {post.user?.fullName || post.user?.userName}
                           </h4>
-                          <p className="text-[13px] text-gray-500">{new Date(post.createdAt).toLocaleString('vi-VN')} • 🌏</p>
+                          <p className="text-[13px] text-gray-500">{formatVNTime(post.createdAt)} • 🌏</p>
                         </div>
                       </div>
                       {isOwnProfile && !isShared && (
@@ -703,7 +715,7 @@ const Profile: React.FC = () => {
                                 </p>
                                 <p className="text-sm text-gray-800">{comment.content}</p>
                               </div>
-                              <p className="text-xs text-gray-500 mt-1 ml-3">{new Date(comment.createdAt).toLocaleString('vi-VN')}</p>
+                              <p className="text-xs text-gray-500 mt-1 ml-3">{formatVNTime(comment.createdAt)}</p>
                             </div>
                           </div>
                         ))}

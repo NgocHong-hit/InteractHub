@@ -22,9 +22,39 @@ namespace InteractHub.API.Controllers
 
         // Đăng Story mới
         [HttpPost]
-        public async Task<ActionResult<ServiceResult>> CreateStory([FromBody] CreateStoryDto dto)
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult<ServiceResult>> CreateStory([FromForm] CreateStoryDto dto)
         {
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            string? imageUrl = null;
+            if (dto.Image != null && dto.Image.Length > 0)
+            {
+                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+                if (!Directory.Exists(uploadsFolder))
+                    Directory.CreateDirectory(uploadsFolder);
+
+                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(dto.Image.FileName);
+                var filePath = Path.Combine(uploadsFolder, fileName);
+
+                try
+                {
+                    await using var stream = new FileStream(filePath, FileMode.Create);
+                    await dto.Image.CopyToAsync(stream);
+                    imageUrl = $"/uploads/{fileName}";
+                }
+                catch (Exception ex)
+                {
+                    return BadRequest(ServiceResult.Failure($"Failed to upload image: {ex.Message}"));
+                }
+            }
+            
+            // Map the uploaded file URL to MediaUrl before passing to service
+            if (imageUrl != null)
+            {
+                dto.MediaUrl = imageUrl;
+            }
+
             var result = await _storyService.CreateStoryAsync(userId, dto);
 
             if (!result.IsSuccess)

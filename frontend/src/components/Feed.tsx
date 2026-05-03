@@ -23,6 +23,11 @@ const getAvatarUrl = (url?: string, seed?: string) => {
   return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed || 'user'}`;
 };
 
+const formatVNTime = (dateString: string) => {
+  const utcDate = new Date(dateString);
+  return utcDate.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+};
+
 const Feed = ({ stories = [] }: any) => {
   const navigate = useNavigate();
   const { user: userData } = useAuth();
@@ -36,12 +41,12 @@ const Feed = ({ stories = [] }: any) => {
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const menuButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
-  
+
   // --- States cho Shared Posts ---
   const [sharedPosts, setSharedPosts] = useState<SharedPost[]>([]);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [postToShare, setPostToShare] = useState<Post | null>(null);
-  
+
   const [editingSharedPost, setEditingSharedPost] = useState<SharedPost | null>(null);
   const [isEditSharedModalOpen, setIsEditSharedModalOpen] = useState(false);
   const [visibleSharedPostMenu, setVisibleSharedPostMenu] = useState<number | null>(null);
@@ -50,7 +55,7 @@ const Feed = ({ stories = [] }: any) => {
   // --- States mới cho chức năng xem Story ---
   const [isStoryModalOpen, setIsStoryModalOpen] = useState(false);
   const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
-  
+
   // --- THÊM DÒNG NÀY ĐỂ LỌC TRÙNG ---
   const uniqueStories = stories.filter((story: any, index: number, self: any[]) =>
     index === self.findIndex((s) => s.id === story.id)
@@ -61,47 +66,47 @@ const Feed = ({ stories = [] }: any) => {
   }, []);
 
   const formattedStories = uniqueStories.map((s: any) => {
-  return {
-    content: (props: any) => (
-      <div className="relative w-full h-full flex flex-col items-center justify-center bg-black overflow-hidden">
-        
-        {/* --- 1. TỰ VẼ HEADER Ở GÓC TRÁI --- */}
-        <div className="absolute top-8 left-4 flex items-center gap-3 z-[1001] w-full px-4">
-          <img 
-            src={getAvatarUrl(s.user?.avatarUrl || s.avatar, s.name)} 
-            className="w-10 h-10 rounded-full border-2 border-white shadow-md object-cover" 
-            alt="avatar" 
-          />
-          <div className="flex flex-col">
-            <span className="text-white text-[15px] font-bold drop-shadow-md">
-              {s.user?.fullName || s.name || 'Người dùng'}
-            </span>
-            <span className="text-white/80 text-[11px] drop-shadow-sm">Tin tạm thời</span>
+    return {
+      content: (props: any) => (
+        <div className="relative w-full h-full flex flex-col items-center justify-center bg-black overflow-hidden">
+
+          {/* --- 1. TỰ VẼ HEADER Ở GÓC TRÁI --- */}
+          <div className="absolute top-8 left-4 flex items-center gap-3 z-[1001] w-full px-4">
+            <img
+              src={getAvatarUrl(s.user?.avatarUrl || s.avatar, s.name)}
+              className="w-10 h-10 rounded-full border-2 border-white shadow-md object-cover"
+              alt="avatar"
+            />
+            <div className="flex flex-col">
+              <span className="text-white text-[15px] font-bold drop-shadow-md">
+                {s.user?.fullName || s.name || 'Người dùng'}
+              </span>
+              <span className="text-white/80 text-[11px] drop-shadow-sm">Tin tạm thời</span>
+            </div>
           </div>
+
+          {/* --- 2. NỀN STORY --- */}
+          {(s.mediaUrl || s.thumb) ? (
+            <img src={s.mediaUrl || s.thumb} className="w-full h-full object-cover" alt="story" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500" />
+          )}
+
+          {/* --- 3. NỘI DUNG CHỮ (Dành cho Story cũ chỉ có text) --- */}
+          {s.content && !s.mediaUrl && (
+            <>
+              <div className="absolute inset-0 bg-black/20" />
+              <div className="absolute inset-0 flex items-center justify-center p-8">
+                <p className="text-white text-2xl font-bold text-center drop-shadow-lg whitespace-pre-wrap">
+                  {s.content}
+                </p>
+              </div>
+            </>
+          )}
         </div>
-
-        {/* --- 2. NỀN STORY --- */}
-        {(s.mediaUrl || s.thumb) ? (
-          <img src={s.mediaUrl || s.thumb} className="w-full h-full object-cover" alt="story" />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500" />
-        )}
-
-        {/* Lớp phủ tối */}
-        <div className="absolute inset-0 bg-black/20" />
-
-        {/* --- 3. NỘI DUNG CHỮ --- */}
-        {s.content && (
-          <div className="absolute inset-0 flex items-center justify-center p-8">
-            <p className="text-white text-2xl font-bold text-center drop-shadow-lg whitespace-pre-wrap">
-              {s.content}
-            </p>
-          </div>
-        )}
-      </div>
-    ),
-  };
-});
+      ),
+    };
+  });
 
   const handleOpenStory = (index: number) => {
     setSelectedStoryIndex(index);
@@ -252,7 +257,7 @@ const Feed = ({ stories = [] }: any) => {
     return <div className="flex-1 flex items-center justify-center py-10">Đang tải bài viết...</div>;
   }
 
-  const displayName = userData?.fullName || userData?.name || 'Bạn';
+  const displayName = userData?.fullName || userData?.userName || 'Bạn';
 
   const allFeedItems = [
     ...posts.map(p => ({ type: 'post', data: p, date: new Date(p.createdAt).getTime() })),
@@ -282,18 +287,18 @@ const Feed = ({ stories = [] }: any) => {
         </Link>
 
         {uniqueStories.map((story: any, index: number) => (
-          <div 
+          <div
             // SỬA KEY Ở ĐÂY: Kết hợp ID và Index để đảm bảo duy nhất tuyệt đối
-            key={`story-${story.id}-${index}`} 
-            onClick={() => handleOpenStory(index)} 
+            key={`story-${story.id}-${index}`}
+            onClick={() => handleOpenStory(index)}
             className="relative w-28 h-48 flex-shrink-0 rounded-xl overflow-hidden cursor-pointer group shadow-sm border border-gray-200"
           >
-            <img 
-              src={story.thumb || 'https://images.unsplash.com/photo-1557683316-973673baf926?w=200'} 
-              className="w-full h-full object-cover transition-transform group-hover:scale-110" 
-              alt="story" 
+            <img
+              src={story.thumb || 'https://images.unsplash.com/photo-1557683316-973673baf926?w=200'}
+              className="w-full h-full object-cover transition-transform group-hover:scale-110"
+              alt="story"
             />
-            
+
             {/* Hiển thị nội dung chữ trên Thumbnail story */}
             {story.content && (
               <div className="absolute inset-0 flex items-center justify-center p-2 bg-black/10">
@@ -304,10 +309,10 @@ const Feed = ({ stories = [] }: any) => {
             )}
 
             <div className="absolute top-2 left-2 p-0.5 bg-[#0866FF] rounded-full border-2 border-white z-10">
-              <img 
-                src={getAvatarUrl(story.avatar, story.name)} 
-                className="w-7 h-7 rounded-full object-cover" 
-                alt="avatar" 
+              <img
+                src={getAvatarUrl(story.avatar, story.name)}
+                className="w-7 h-7 rounded-full object-cover"
+                alt="avatar"
               />
             </div>
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
@@ -321,13 +326,13 @@ const Feed = ({ stories = [] }: any) => {
       {/* --- MODAL XEM STORY CHI TIẾT --- */}
       {isStoryModalOpen && formattedStories.length > 0 && (
         <div className="fixed inset-0 bg-black/95 z-[999] flex items-center justify-center">
-          <button 
+          <button
             onClick={() => setIsStoryModalOpen(false)}
             className="absolute top-6 right-6 text-white p-2 z-[1000]"
           >
             <X size={32} />
           </button>
-          
+
           <div className="relative shadow-2xl rounded-xl overflow-hidden">
             {typeof Stories === 'function' || typeof Stories === 'object' ? (
               <Stories
@@ -370,196 +375,195 @@ const Feed = ({ stories = [] }: any) => {
           const isShared = item.type === 'shared';
           const post = isShared ? item.data.post : item.data;
           if (!post) return null; // Safe check
-          
+
           const sharedPost = isShared ? item.data : null;
           const displayId = isShared ? `shared-${sharedPost.id}` : `post-${post.id}`;
           const hasLiked = post.likes?.some((l: any) => l.userId === userData?.id);
 
           return (
-          <div key={displayId} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            {/* Header của Share (nếu là bài share) */}
-            {isShared && (
-              <div className="p-3 pb-0">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Share2 size={14} />
-                    <span className="font-semibold cursor-pointer hover:underline text-gray-800" onClick={() => navigate(`/profile/${sharedPost.userId}`)}>
-                      {sharedPost.user?.fullName || sharedPost.user?.userName}
-                    </span>
-                    <span>đã chia sẻ một bài viết</span>
+            <div key={displayId} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              {/* Header của Share (nếu là bài share) */}
+              {isShared && (
+                <div className="p-3 pb-0">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Share2 size={14} />
+                      <span className="font-semibold cursor-pointer hover:underline text-gray-800" onClick={() => navigate(`/profile/${sharedPost.userId}`)}>
+                        {sharedPost.user?.fullName || sharedPost.user?.userName}
+                      </span>
+                      <span>đã chia sẻ một bài viết</span>
+                    </div>
+                    {sharedPost.userId === userData?.id && (
+                      <div className="relative">
+                        <button
+                          ref={(el) => { if (el) sharedMenuButtonRefs.current[sharedPost.id] = el; }}
+                          onClick={() => setVisibleSharedPostMenu(visibleSharedPostMenu === sharedPost.id ? null : sharedPost.id)}
+                          className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                        >
+                          <MoreHorizontal size={18} />
+                        </button>
+                        <PostMenu
+                          postId={sharedPost.id}
+                          isVisible={visibleSharedPostMenu === sharedPost.id}
+                          onClose={() => setVisibleSharedPostMenu(null)}
+                          onEdit={handleEditSharedPost}
+                          onDelete={handleDeleteSharedPost}
+                          canEdit={true}
+                          buttonRef={{ current: sharedMenuButtonRefs.current[sharedPost.id] || null }}
+                        />
+                      </div>
+                    )}
                   </div>
-                  {sharedPost.userId === userData?.id && (
+                  {sharedPost.content && (
+                    <p className="text-[15px] mb-2 px-1">{sharedPost.content}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Bọc bài viết gốc nếu là Share */}
+              <div className={isShared ? "mx-3 mb-3 border border-gray-200 rounded-xl overflow-hidden bg-gray-50/50" : ""}>
+                <div className="p-4 flex justify-between items-start">
+                  <div className="flex gap-3">
+                    <img
+                      src={getAvatarUrl(post.user?.avatarUrl, post.user?.userName || 'User')}
+                      className="w-10 h-10 rounded-full border border-gray-100 object-cover cursor-pointer"
+                      alt=""
+                      onClick={() => navigate(`/profile/${post.userId}`)}
+                    />
+                    <div>
+                      <h4 className="font-bold text-sm hover:underline cursor-pointer" onClick={() => navigate(`/profile/${post.userId}`)}>
+                        {post.user?.fullName || post.user?.userName || 'Người dùng'}
+                      </h4>
+                      <span className="text-[11px] text-gray-500 font-medium">{formatVNTime(post.createdAt)} • 🌏</span>
+                    </div>
+                  </div>
+                  {!isShared && post.userId === userData?.id && (
                     <div className="relative">
-                      <button 
-                        ref={(el) => { if (el) sharedMenuButtonRefs.current[sharedPost.id] = el; }}
-                        onClick={() => setVisibleSharedPostMenu(visibleSharedPostMenu === sharedPost.id ? null : sharedPost.id)}
-                        className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                      <button
+                        ref={(el) => {
+                          if (el) menuButtonRefs.current[post.id] = el;
+                        }}
+                        onClick={() => setVisiblePostMenu(visiblePostMenu === post.id ? null : post.id)}
+                        className="text-gray-400 cursor-pointer hover:bg-gray-100 rounded-full p-2 transition-colors"
                       >
                         <MoreHorizontal size={18} />
                       </button>
                       <PostMenu
-                        postId={sharedPost.id}
-                        isVisible={visibleSharedPostMenu === sharedPost.id}
-                        onClose={() => setVisibleSharedPostMenu(null)}
-                        onEdit={handleEditSharedPost}
-                        onDelete={handleDeleteSharedPost}
+                        postId={post.id}
+                        isVisible={visiblePostMenu === post.id}
+                        onClose={() => setVisiblePostMenu(null)}
+                        onEdit={handleEditPost}
+                        onDelete={handleDeletePost}
                         canEdit={true}
-                        buttonRef={{ current: sharedMenuButtonRefs.current[sharedPost.id] || null }}
+                        buttonRef={{ current: menuButtonRefs.current[post.id] || null }}
                       />
                     </div>
                   )}
                 </div>
-                {sharedPost.content && (
-                  <p className="text-[15px] mb-2 px-1">{sharedPost.content}</p>
-                )}
-              </div>
-            )}
 
-            {/* Bọc bài viết gốc nếu là Share */}
-            <div className={isShared ? "mx-3 mb-3 border border-gray-200 rounded-xl overflow-hidden bg-gray-50/50" : ""}>
-              <div className="p-4 flex justify-between items-start">
-                <div className="flex gap-3">
+                <div className="px-4 pb-3 text-[15px] leading-relaxed text-gray-800">{post.content}</div>
+                {/* Hashtag badges */}
+                {post.postHashtags && post.postHashtags.length > 0 && (
+                  <div className="px-4 pb-3 flex flex-wrap gap-1.5">
+                    {post.postHashtags.map((ph: any, idx: number) => (
+                      <button
+                        key={idx}
+                        onClick={() => navigate(`/hashtags?tag=${encodeURIComponent(ph.hashtag?.name || '')}`)}
+                        className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-semibold border border-blue-100 hover:bg-blue-100 transition-colors cursor-pointer"
+                      >
+                        {ph.hashtag?.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {post.imageUrl && (
                   <img
-                    src={getAvatarUrl(post.user?.avatarUrl, post.user?.userName || 'User')}
-                    className="w-10 h-10 rounded-full border border-gray-100 object-cover cursor-pointer"
-                    alt=""
-                    onClick={() => navigate(`/profile/${post.userId}`)}
+                    src={`${API_BASE_URL}${post.imageUrl}`}
+                    className="w-full max-h-[450px] object-cover border-y border-gray-50"
+                    alt="post"
                   />
-                  <div>
-                    <h4 className="font-bold text-sm hover:underline cursor-pointer" onClick={() => navigate(`/profile/${post.userId}`)}>
-                      {post.user?.fullName || post.user?.userName || 'Người dùng'}
-                    </h4>
-                    <span className="text-[11px] text-gray-500 font-medium">{new Date(post.createdAt).toLocaleString('vi-VN')} • 🌏</span>
-                  </div>
-                </div>
-                {!isShared && post.userId === userData?.id && (
-                  <div className="relative">
-                    <button
-                      ref={(el) => {
-                        if (el) menuButtonRefs.current[post.id] = el;
-                      }}
-                      onClick={() => setVisiblePostMenu(visiblePostMenu === post.id ? null : post.id)}
-                      className="text-gray-400 cursor-pointer hover:bg-gray-100 rounded-full p-2 transition-colors"
-                    >
-                      <MoreHorizontal size={18} />
-                    </button>
-                    <PostMenu
-                      postId={post.id}
-                      isVisible={visiblePostMenu === post.id}
-                      onClose={() => setVisiblePostMenu(null)}
-                      onEdit={handleEditPost}
-                      onDelete={handleDeletePost}
-                      canEdit={true}
-                      buttonRef={{ current: menuButtonRefs.current[post.id] || null }}
-                    />
-                  </div>
                 )}
               </div>
 
-              <div className="px-4 pb-3 text-[15px] leading-relaxed text-gray-800">{post.content}</div>
-              {/* Hashtag badges */}
-              {post.postHashtags && post.postHashtags.length > 0 && (
-                <div className="px-4 pb-3 flex flex-wrap gap-1.5">
-                  {post.postHashtags.map((ph: any, idx: number) => (
-                    <button
-                      key={idx}
-                      onClick={() => navigate(`/hashtags?tag=${encodeURIComponent(ph.hashtag?.name || '')}`)}
-                      className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-semibold border border-blue-100 hover:bg-blue-100 transition-colors cursor-pointer"
-                    >
-                      {ph.hashtag?.name}
-                    </button>
-                  ))}
+              <div className="px-4 py-2 flex items-center justify-between border-t border-gray-50 mx-2">
+                <div className="flex items-center gap-1.5 text-gray-500 text-sm">
+                  <div className="bg-blue-500 p-1 rounded-full"><ThumbsUp size={10} className="text-white fill-current" /></div>
+                  <span className="font-medium">{post.likes?.length || 0}</span>
                 </div>
-              )}
-              {post.imageUrl && (
-                <img
-                  src={`${API_BASE_URL}${post.imageUrl}`}
-                  className="w-full max-h-[450px] object-cover border-y border-gray-50"
-                  alt="post"
-                />
-              )}
-            </div>
-
-            <div className="px-4 py-2 flex items-center justify-between border-t border-gray-50 mx-2">
-              <div className="flex items-center gap-1.5 text-gray-500 text-sm">
-                <div className="bg-blue-500 p-1 rounded-full"><ThumbsUp size={10} className="text-white fill-current" /></div>
-                <span className="font-medium">{post.likes?.length || 0}</span>
+                <span className="text-gray-500 text-xs font-medium">{post.comments?.length || 0} bình luận</span>
               </div>
-              <span className="text-gray-500 text-xs font-medium">{post.comments?.length || 0} bình luận</span>
-            </div>
 
-            <div className="px-2 pb-1 flex border-t border-gray-100 mx-2 mb-1">
-              <button
-                onClick={() => handleLike(post.id)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 font-bold text-[13px] hover:bg-gray-100 rounded-lg transition-colors ${
-                  hasLiked ? 'text-[#0866FF]' : 'text-gray-600'
-                }`}
-              >
-                <ThumbsUp size={18} /> Thích
-              </button>
-              <button
-                onClick={() => toggleComments(post.id)}
-                className="flex-1 flex items-center justify-center gap-2 py-2 text-gray-600 font-bold text-[13px] hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <MessageSquare size={18} /> Bình luận
-              </button>
-              <button
-                onClick={() => handleOpenShareModal(post)}
-                className="flex-1 flex items-center justify-center gap-2 py-2 text-gray-600 font-bold text-[13px] hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <Share2 size={18} /> Chia sẻ
-              </button>
-            </div>
+              <div className="px-2 pb-1 flex border-t border-gray-100 mx-2 mb-1">
+                <button
+                  onClick={() => handleLike(post.id)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 font-bold text-[13px] hover:bg-gray-100 rounded-lg transition-colors ${hasLiked ? 'text-[#0866FF]' : 'text-gray-600'
+                    }`}
+                >
+                  <ThumbsUp size={18} /> Thích
+                </button>
+                <button
+                  onClick={() => toggleComments(post.id)}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 text-gray-600 font-bold text-[13px] hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <MessageSquare size={18} /> Bình luận
+                </button>
+                <button
+                  onClick={() => handleOpenShareModal(post)}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 text-gray-600 font-bold text-[13px] hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <Share2 size={18} /> Chia sẻ
+                </button>
+              </div>
 
-            {showComments[post.id] && (
-              <div className="px-4 pb-4 border-t border-gray-100">
-                <div className="flex gap-2 mt-3">
-                  <img src={getAvatarUrl(userData?.avatarUrl, userData?.userName || 'User')} className="w-8 h-8 rounded-full object-cover" alt="" />
-                  <div className="flex-1 flex gap-2">
-                    <input
-                      type="text"
-                      value={commentText[post.id] ?? ''}
-                      onChange={(e) => handleCommentChange(post.id, e.target.value)}
-                      placeholder="Viết bình luận..."
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-full text-sm focus:outline-none focus:border-blue-500"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleComment(post.id);
-                        }
-                      }}
-                    />
-                    <button
-                      onClick={() => handleComment(post.id)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-medium hover:bg-blue-700"
-                    >
-                      Đăng
-                    </button>
+              {showComments[post.id] && (
+                <div className="px-4 pb-4 border-t border-gray-100">
+                  <div className="flex gap-2 mt-3">
+                    <img src={getAvatarUrl(userData?.avatarUrl, userData?.userName || 'User')} className="w-8 h-8 rounded-full object-cover" alt="" />
+                    <div className="flex-1 flex gap-2">
+                      <input
+                        type="text"
+                        value={commentText[post.id] ?? ''}
+                        onChange={(e) => handleCommentChange(post.id, e.target.value)}
+                        placeholder="Viết bình luận..."
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-full text-sm focus:outline-none focus:border-blue-500"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleComment(post.id);
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={() => handleComment(post.id)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-medium hover:bg-blue-700"
+                      >
+                        Đăng
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 space-y-3">
+                    {(comments[post.id] || []).map((comment: Comment) => (
+                      <div key={comment.id} className="flex gap-2">
+                        <img
+                          src={getAvatarUrl(comment.user?.avatarUrl, comment.user?.userName || 'User')}
+                          className="w-8 h-8 rounded-full object-cover cursor-pointer"
+                          alt=""
+                          onClick={() => navigate(`/profile/${comment.userId}`)}
+                        />
+                        <div className="flex-1">
+                          <div className="bg-gray-100 px-3 py-2 rounded-2xl">
+                            <p className="font-medium text-sm hover:underline cursor-pointer" onClick={() => navigate(`/profile/${comment.userId}`)}>{comment.user?.fullName || comment.user?.userName || 'Người dùng'}</p>
+                            <p className="text-sm text-gray-800">{comment.content}</p>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1 ml-3">{formatVNTime(comment.createdAt)}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-
-                <div className="mt-3 space-y-3">
-                  {(comments[post.id] || []).map((comment: Comment) => (
-                    <div key={comment.id} className="flex gap-2">
-                      <img
-                        src={getAvatarUrl(comment.user?.avatarUrl, comment.user?.userName || 'User')}
-                        className="w-8 h-8 rounded-full object-cover cursor-pointer"
-                        alt=""
-                        onClick={() => navigate(`/profile/${comment.userId}`)}
-                      />
-                      <div className="flex-1">
-                        <div className="bg-gray-100 px-3 py-2 rounded-2xl">
-                          <p className="font-medium text-sm hover:underline cursor-pointer" onClick={() => navigate(`/profile/${comment.userId}`)}>{comment.user?.fullName || comment.user?.userName || 'Người dùng'}</p>
-                          <p className="text-sm text-gray-800">{comment.content}</p>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1 ml-3">{new Date(comment.createdAt).toLocaleString('vi-VN')}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
           );
         })}
       </div>

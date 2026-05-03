@@ -40,12 +40,18 @@ const Homepages = () => {
       const myStoriesArray = Array.isArray(myStories) ? myStories : [];
       
       // Kết hợp stories và chuyển đổi format
+      const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
+      const resolveUrl = (url?: string) => {
+        if (!url) return undefined;
+        return url.startsWith('http') ? url : `${API_BASE}${url}`;
+      };
+
       const allStories = [...myStoriesArray, ...friendStoriesArray].map((story: any) => ({
         id: story.id,
-        // StoryDto trả về FullName, UserName, AvatarUrl tại top level
         name: story.fullName || story.userName || 'Người dùng',
         avatar: story.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${story.userName}`,
-        thumb: story.mediaUrl || 'https://images.unsplash.com/photo-1557683316-973673baf926?w=200',
+        thumb: resolveUrl(story.mediaUrl) || 'https://images.unsplash.com/photo-1557683316-973673baf926?w=200',
+        mediaUrl: resolveUrl(story.mediaUrl),
         content: story.content,
         createdAt: story.createdAt,
         expiresAt: story.expiresAt,

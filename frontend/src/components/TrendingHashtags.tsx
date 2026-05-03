@@ -7,6 +7,17 @@ import type { Hashtag, HashtagPost } from '../api/hashtagAPI';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
 
+const getAvatarUrl = (url?: string, seed?: string) => {
+  if (url) return url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed || 'user'}`;
+};
+
+// Chuyển giờ UTC từ server sang giờ Việt Nam (UTC+7)
+const formatVNTime = (dateString: string) => {
+  const utcDate = new Date(dateString);
+  return utcDate.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+};
+
 const TrendingHashtags = ({ userData }: any) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -143,14 +154,14 @@ const TrendingHashtags = ({ userData }: any) => {
                     <div className="p-4 flex justify-between items-start">
                       <div className="flex gap-3">
                         <img
-                          src={post.user?.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'}
+                          src={getAvatarUrl(post.user?.avatarUrl, post.user?.userName)}
                           className="w-10 h-10 rounded-full border border-gray-100 object-cover"
                           alt=""
                         />
                         <div>
                           <h4 className="font-bold text-sm">{post.user?.fullName || post.user?.userName || 'Người dùng'}</h4>
                           <span className="text-[11px] text-gray-500 font-medium">
-                            {new Date(post.createdAt).toLocaleString('vi-VN')} • 🌏
+                            {formatVNTime(post.createdAt)} • 🌏
                           </span>
                         </div>
                       </div>
