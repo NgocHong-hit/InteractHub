@@ -5,6 +5,11 @@ import postsAPI from '../api/postsAPI';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
 
+const getAvatarUrl = (url?: string, seed?: string) => {
+  if (url) return url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed || 'user'}`;
+};
+
 const CreatePostModal = ({ isOpen, onClose, userData, onPostSuccess }: any) => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -75,7 +80,7 @@ const CreatePostModal = ({ isOpen, onClose, userData, onPostSuccess }: any) => {
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <div className="flex gap-3 items-center">
-            <img src={userData?.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'} alt="avatar" className="w-12 h-12 rounded-full object-cover" />
+            <img src={getAvatarUrl(userData?.avatarUrl, userData?.userName)} alt="avatar" className="w-12 h-12 rounded-full object-cover" />
             <div>
               <div className="text-sm font-semibold text-slate-900">{displayName}</div>
               <div className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">

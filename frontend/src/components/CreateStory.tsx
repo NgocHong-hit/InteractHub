@@ -7,6 +7,13 @@ import storyAPI from '../api/storyAPI';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5012';
+
+const getAvatarUrl = (url?: string, seed?: string) => {
+  if (url) return url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed || 'user'}`;
+};
+
 const CreateStory = ({ userData = {}, setView }: any) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -108,7 +115,7 @@ const CreateStory = ({ userData = {}, setView }: any) => {
           <div className="flex-1 overflow-y-auto p-5 space-y-8 no-scrollbar">
             {/* User Info */}
             <div className="flex items-center gap-3">
-              <img src={currentUser?.avatarUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=User"} className="w-12 h-12 rounded-full border" alt="me" />
+              <img src={getAvatarUrl(currentUser?.avatarUrl, currentUser?.userName)} className="w-12 h-12 rounded-full border" alt="me" />
               <div>
                 <p className="font-bold">{profileName}</p>
                 <span className="text-[11px] text-gray-500">Công khai</span>
@@ -196,7 +203,7 @@ const CreateStory = ({ userData = {}, setView }: any) => {
 
               {/* Header cố định */}
               <div className="absolute top-6 left-4 flex items-center gap-2 z-50 pointer-events-none">
-                <img src={currentUser?.avatarUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=User"} className="w-8 h-8 rounded-full border border-white" alt="" />
+                <img src={getAvatarUrl(currentUser?.avatarUrl, currentUser?.userName)} className="w-8 h-8 rounded-full border border-white" alt="" />
                 <span className="text-white text-[11px] font-bold">{profileName}</span>
               </div>
             </div>

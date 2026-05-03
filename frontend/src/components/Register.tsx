@@ -90,20 +90,28 @@ const Register: React.FC = () => {
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input 
-                  {...register("fullName", { required: "Vui lòng nhập tên" })}
+                  {...register("fullName", { required: "Vui lòng nhập thông tin" })}
                   disabled={isLoading}
-                  placeholder="Full Name"
-                  className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-[#0866FF] outline-none text-sm"
+                  placeholder="Họ và tên"
+                  className={`w-full pl-11 pr-4 py-2.5 bg-gray-50 border ${errors.fullName ? 'border-red-500' : 'border-gray-200'} rounded-xl focus:border-[#0866FF] outline-none text-sm`}
                 />
+                {errors.fullName && <p className="text-red-500 text-[10px] mt-1 ml-2">{errors.fullName.message as string}</p>}
               </div>
               <div className="relative">
                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input 
-                  {...register("phoneNumber")}
+                  {...register("phoneNumber", { 
+                    required: "Vui lòng nhập thông tin",
+                    pattern: {
+                      value: /^[0-9]{10}$/,
+                      message: "Số điện thoại phải gồm 10 số"
+                    }
+                  })}
                   disabled={isLoading}
-                  placeholder="Phone Number"
-                  className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-[#0866FF] outline-none text-sm"
+                  placeholder="Số điện thoại"
+                  className={`w-full pl-11 pr-4 py-2.5 bg-gray-50 border ${errors.phoneNumber ? 'border-red-500' : 'border-gray-200'} rounded-xl focus:border-[#0866FF] outline-none text-sm`}
                 />
+                {errors.phoneNumber && <p className="text-red-500 text-[10px] mt-1 ml-2">{errors.phoneNumber.message as string}</p>}
               </div>
             </div>
 
@@ -112,24 +120,38 @@ const Register: React.FC = () => {
               <div className="relative">
                 <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <select 
-                  {...register("gender", { required: "Chọn giới tính" })}
+                  {...register("gender", { required: "Vui lòng nhập thông tin" })}
                   disabled={isLoading}
-                  className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-[#0866FF] outline-none text-sm appearance-none"
+                  className={`w-full pl-11 pr-4 py-2.5 bg-gray-50 border ${errors.gender ? 'border-red-500' : 'border-gray-200'} rounded-xl focus:border-[#0866FF] outline-none text-sm appearance-none`}
                 >
-                  <option value="">Gender</option>
+                  <option value="">Giới tính</option>
                   <option value="Male">Nam</option>
                   <option value="Female">Nữ</option>
                   <option value="Other">Khác</option>
                 </select>
+                {errors.gender && <p className="text-red-500 text-[10px] mt-1 ml-2">{errors.gender.message as string}</p>}
               </div>
               <div className="relative">
                 <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input 
                   type="date"
-                  {...register("dateOfBirth", { required: "Chọn ngày sinh" })}
+                  {...register("dateOfBirth", { 
+                    required: "Vui lòng nhập thông tin",
+                    validate: (value) => {
+                      const today = new Date();
+                      const birthDate = new Date(value);
+                      let age = today.getFullYear() - birthDate.getFullYear();
+                      const m = today.getMonth() - birthDate.getMonth();
+                      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                        age--;
+                      }
+                      return age >= 13 || "Bạn phải từ 13 tuổi trở lên";
+                    }
+                  })}
                   disabled={isLoading}
-                  className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-[#0866FF] outline-none text-sm"
+                  className={`w-full pl-11 pr-4 py-2.5 bg-gray-50 border ${errors.dateOfBirth ? 'border-red-500' : 'border-gray-200'} rounded-xl focus:border-[#0866FF] outline-none text-sm`}
                 />
+                {errors.dateOfBirth && <p className="text-red-500 text-[10px] mt-1 ml-2">{errors.dateOfBirth.message as string}</p>}
               </div>
             </div>
 
@@ -137,11 +159,12 @@ const Register: React.FC = () => {
             <div className="relative">
               <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input 
-                {...register("address")}
+                {...register("address", { required: "Vui lòng nhập thông tin" })}
                 disabled={isLoading}
-                placeholder="Address (City, Country)"
-                className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-[#0866FF] outline-none text-sm"
+                placeholder="Địa chỉ (Tỉnh/Thành phố)"
+                className={`w-full pl-11 pr-4 py-2.5 bg-gray-50 border ${errors.address ? 'border-red-500' : 'border-gray-200'} rounded-xl focus:border-[#0866FF] outline-none text-sm`}
               />
+              {errors.address && <p className="text-red-500 text-[10px] mt-1 ml-2">{errors.address.message as string}</p>}
             </div>
 
             {/* Email */}
@@ -149,14 +172,14 @@ const Register: React.FC = () => {
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input 
                 {...register("email", { 
-                  required: "Email là bắt buộc",
-                  pattern: { value: /^\S+@\S+$/i, message: "Email sai định dạng" }
+                  required: "Vui lòng nhập thông tin",
+                  pattern: { value: /^\S+@\S+\.\S+$/i, message: "Email sai định dạng" }
                 })}
                 disabled={isLoading}
-                placeholder="Email address"
-                className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-[#0866FF] outline-none text-sm"
+                placeholder="Địa chỉ Email"
+                className={`w-full pl-11 pr-4 py-2.5 bg-gray-50 border ${errors.email ? 'border-red-500' : 'border-gray-200'} rounded-xl focus:border-[#0866FF] outline-none text-sm`}
               />
-              {errors.email && <p className="text-red-500 text-[10px] mt-1">{errors.email.message as string}</p>}
+              {errors.email && <p className="text-red-500 text-[10px] mt-1 ml-2">{errors.email.message as string}</p>}
             </div>
 
             {/* Password */}
@@ -164,11 +187,15 @@ const Register: React.FC = () => {
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input 
                 type="password"
-                {...register("password", { required: "Mật khẩu là bắt buộc", minLength: 6 })}
+                {...register("password", { 
+                  required: "Vui lòng nhập thông tin", 
+                  minLength: { value: 6, message: "Mật khẩu phải từ 6 kí tự trở lên" } 
+                })}
                 disabled={isLoading}
-                placeholder="Password"
-                className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-[#0866FF] outline-none text-sm"
+                placeholder="Mật khẩu"
+                className={`w-full pl-11 pr-4 py-2.5 bg-gray-50 border ${errors.password ? 'border-red-500' : 'border-gray-200'} rounded-xl focus:border-[#0866FF] outline-none text-sm`}
               />
+              {errors.password && <p className="text-red-500 text-[10px] mt-1 ml-2">{errors.password.message as string}</p>}
             </div>
 
             {/* Confirm Password */}
@@ -177,13 +204,14 @@ const Register: React.FC = () => {
               <input 
                 type="password"
                 {...register("confirmPassword", { 
-                    validate: v => v === password || "Mật khẩu không khớp" 
+                  required: "Vui lòng nhập thông tin",
+                  validate: v => v === password || "Mật khẩu không khớp" 
                 })}
                 disabled={isLoading}
-                placeholder="Confirm Password"
-                className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-[#0866FF] outline-none text-sm"
+                placeholder="Xác nhận mật khẩu"
+                className={`w-full pl-11 pr-4 py-2.5 bg-gray-50 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-200'} rounded-xl focus:border-[#0866FF] outline-none text-sm`}
               />
-              {errors.confirmPassword && <p className="text-red-500 text-[10px] mt-1">{errors.confirmPassword.message as string}</p>}
+              {errors.confirmPassword && <p className="text-red-500 text-[10px] mt-1 ml-2">{errors.confirmPassword.message as string}</p>}
             </div>
 
             <button 
@@ -191,7 +219,7 @@ const Register: React.FC = () => {
               disabled={isLoading}
               className="w-full bg-[#0866FF] hover:bg-[#1877F2] text-white font-bold py-3 rounded-2xl transition duration-200 shadow-lg flex items-center justify-center gap-2 mt-2"
             >
-              {isLoading ? <Loader2 className="animate-spin" size={18} /> : "Create Account"}
+              {isLoading ? <Loader2 className="animate-spin" size={18} /> : "Đăng ký"}
             </button>
           </form>
 
